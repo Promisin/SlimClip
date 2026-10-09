@@ -232,11 +232,33 @@ jobs:
           name: macos-assets
           path: release-assets
 
+      - name: Extract Release Notes from CHANGELOG
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name || github.event.inputs.tag_name }}"
+          $cleanVer = $tag.TrimStart('v')
+          if (-not (Test-Path "CHANGELOG.md")) {
+            Write-Error "::error::未找到 CHANGELOG.md 文件，请在仓库中补充更新日志！"
+            exit 1
+          }
+
+          $changelog = Get-Content "CHANGELOG.md" -Raw
+          $pattern = "(?ms)^##\s+\[$([regex]::Escape($cleanVer))\].*?(?=^##\s+\[|\Z)"
+          if ($changelog -match $pattern) {
+            $notes = $matches[0].Trim()
+            [System.IO.File]::WriteAllText("release-notes.md", $notes, [System.Text.Encoding]::UTF8)
+            Write-Host "成功提取到版本 [$cleanVer] 的更新说明。" -ForegroundColor Green
+          } else {
+            Write-Error "::error::在 CHANGELOG.md 中未找到版本 [$cleanVer] 的更新说明，发布终止！请先在 CHANGELOG.md 中补充该版本的发布说明。"
+            exit 1
+          }
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name || github.event.inputs.tag_name }}
+          name: SlimClip ${{ github.ref_name || github.event.inputs.tag_name }}
+          body_path: release-notes.md
           files: release-assets/*
-          generate_release_notes: true
           draft: false
           prerelease: false

@@ -4,7 +4,7 @@
 
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC_BY--NC--SA_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS-blue.svg)](https://github.com/Promisin/SlimClip)
-[![Release](https://img.shields.io/github/v/release/Promisin/SlimClip?color=brightgreen)](https://github.com/Promisin/SlimClip/releases)
+[![Release](https://img.shields.io/github/v/release/Promisin/SlimClip?display_name=tag&sort=semver&color=brightgreen)](https://github.com/Promisin/SlimClip/releases)
 
 ---
 
