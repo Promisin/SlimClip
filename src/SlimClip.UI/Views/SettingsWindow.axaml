@@ -1,0 +1,1469 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:SlimClip.UI.ViewModels;assembly=SlimClip.UI"
+        xmlns:models="clr-namespace:SlimClip.Core.Models;assembly=SlimClip.Core"
+        xmlns:controls="clr-namespace:SlimClip.UI.Controls;assembly=SlimClip.UI"
+        x:Class="SlimClip.UI.Views.SettingsWindow"
+        x:DataType="vm:SettingsViewModel"
+        Title="{Binding L[Settings_Title]}"
+        Width="560"
+        Height="540"
+        MinWidth="520"
+        MinHeight="460"
+        MaxWidth="900"
+        MaxHeight="800"
+        CanResize="True"
+        WindowStartupLocation="CenterScreen"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="NoChrome"
+        ExtendClientAreaTitleBarHeightHint="-1"
+        TransparencyLevelHint="AcrylicBlur,Blur,Transparent"
+        Background="Transparent"
+        Foreground="{DynamicResource TextPrimaryBrush}"
+        FontFamily="{DynamicResource PrimaryFontFamily}"
+        FontWeight="{DynamicResource NormalFontWeight}"
+        UseLayoutRounding="True">
+
+    <Window.Resources>
+        <!-- Custom Monochrome Pill Slider Theme -->
+        <ControlTheme x:Key="PillSliderTheme" TargetType="Slider">
+            <Setter Property="FocusAdorner" Value="{x:Null}" />
+            <Setter Property="Foreground" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="MinHeight" Value="36" />
+            <Setter Property="Height" Value="36" />
+            <Setter Property="ClipToBounds" Value="False" />
+            <Setter Property="Template">
+                <ControlTemplate TargetType="Slider">
+                    <Panel Height="36" VerticalAlignment="Center" ClipToBounds="False">
+                        <!-- Background Pill Track: 轨道高度 8px，圆角 4px 完全半圆端点 -->
+                        <Border Name="TrackBackground"
+                                Height="8"
+                                CornerRadius="4"
+                                Background="{DynamicResource SearchBackground}"
+                                BorderBrush="{DynamicResource SearchBorderBrush}"
+                                BorderThickness="1"
+                                VerticalAlignment="Center"
+                                ClipToBounds="True" />
+
+                        <!-- Interactive Track -->
+                        <Track Name="PART_Track"
+                               Minimum="{TemplateBinding Minimum}"
+                               Maximum="{TemplateBinding Maximum}"
+                               Value="{TemplateBinding Value, Mode=TwoWay}"
+                               Orientation="{TemplateBinding Orientation}"
+                               Height="36"
+                               VerticalAlignment="Center"
+                               ClipToBounds="False">
+                            <Track.DecreaseButton>
+                                <RepeatButton Name="PART_DecreaseButton"
+                                              Focusable="False"
+                                              ClipToBounds="False"
+                                              Background="{DynamicResource ActiveChipBackground}"
+                                              VerticalAlignment="Stretch"
+                                              HorizontalAlignment="Stretch">
+                                    <RepeatButton.Template>
+                                        <ControlTemplate TargetType="RepeatButton">
+                                            <!-- 已填充轨道：高度 8px，左右两端均为圆角端点（CornerRadius="4"），右端 Margin 延伸 18px 与 36px 滑块中心严格对齐 -->
+                                            <Border Height="8"
+                                                    CornerRadius="4"
+                                                    Margin="0,0,-18,0"
+                                                    ClipToBounds="False"
+                                                    Background="{TemplateBinding Background}"
+                                                    VerticalAlignment="Center" />
+                                        </ControlTemplate>
+                                    </RepeatButton.Template>
+                                </RepeatButton>
+                            </Track.DecreaseButton>
+                            <Track.IncreaseButton>
+                                <RepeatButton Name="PART_IncreaseButton"
+                                              Focusable="False"
+                                              Background="Transparent"
+                                              VerticalAlignment="Stretch"
+                                              HorizontalAlignment="Stretch">
+                                    <RepeatButton.Template>
+                                        <ControlTemplate TargetType="RepeatButton">
+                                            <Border Height="8"
+                                                    Background="Transparent"
+                                                    VerticalAlignment="Center" />
+                                        </ControlTemplate>
+                                    </RepeatButton.Template>
+                                </RepeatButton>
+                            </Track.IncreaseButton>
+                            <Track.Thumb>
+                                <Thumb Name="PART_Thumb"
+                                       Classes="SliderPillThumb"
+                                       Focusable="False"
+                                       Width="36"
+                                       Height="36"
+                                       ClipToBounds="False"
+                                       ZIndex="1"
+                                       Cursor="Hand"
+                                       VerticalAlignment="Center">
+                                    <Thumb.Template>
+                                        <ControlTemplate TargetType="Thumb">
+                                            <Panel Width="36" Height="36" Background="Transparent" ClipToBounds="False">
+                                                <Border Name="ThumbCircle"
+                                                        Width="24"
+                                                        Height="24"
+                                                        CornerRadius="18"
+                                                        Background="{DynamicResource ActiveChipBackground}"
+                                                        BorderBrush="{DynamicResource ActiveChipForeground}"
+                                                        BorderThickness="2"
+                                                        VerticalAlignment="Center"
+                                                        HorizontalAlignment="Center">
+                                                    <Border.Transitions>
+                                                        <Transitions>
+                                                            <DoubleTransition Property="Width" Duration="0:0:0.18" Easing="CubicEaseOut" />
+                                                            <DoubleTransition Property="Height" Duration="0:0:0.18" Easing="CubicEaseOut" />
+                                                        </Transitions>
+                                                    </Border.Transitions>
+                                                </Border>
+                                            </Panel>
+                                        </ControlTemplate>
+                                    </Thumb.Template>
+                                </Thumb>
+                            </Track.Thumb>
+                        </Track>
+                    </Panel>
+                </ControlTemplate>
+            </Setter>
+        </ControlTheme>
+    </Window.Resources>
+
+    <Window.Styles>
+        <Style Selector="TextBlock">
+            <Setter Property="FontWeight" Value="{DynamicResource NormalFontWeight}" />
+        </Style>
+        <!-- RadioButton (General / Theme Mode - 100% Monochrome) -->
+        <Style Selector="RadioButton">
+            <Setter Property="FocusAdorner" Value="{x:Null}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="FontSize" Value="{DynamicResource BodyFontSize}" />
+            <Setter Property="FontWeight" Value="{DynamicResource NormalFontWeight}" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="RadioButton /template/ Ellipse#OuterEllipse">
+            <Setter Property="Stroke" Value="{DynamicResource HairlineBrush}" />
+            <Setter Property="StrokeThickness" Value="1.5" />
+            <Setter Property="Fill" Value="{DynamicResource SearchBackground}" />
+        </Style>
+        <Style Selector="RadioButton:pointerover /template/ Ellipse#OuterEllipse">
+            <Setter Property="Stroke" Value="{DynamicResource TextSecondaryBrush}" />
+            <Setter Property="Fill" Value="{DynamicResource CardHoverBrush}" />
+        </Style>
+        <Style Selector="RadioButton:pointerover">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+        </Style>
+        <Style Selector="RadioButton:checked /template/ Ellipse#OuterEllipse">
+            <Setter Property="Stroke" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="Fill" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="StrokeThickness" Value="1" />
+        </Style>
+        <Style Selector="RadioButton:checked /template/ Ellipse#CheckOuterEllipse">
+            <Setter Property="Stroke" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="Fill" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="StrokeThickness" Value="1" />
+        </Style>
+        <Style Selector="RadioButton:checked /template/ Ellipse#CheckGlyph">
+            <Setter Property="Fill" Value="{DynamicResource ActiveChipForeground}" />
+            <Setter Property="Width" Value="8" />
+            <Setter Property="Height" Value="8" />
+        </Style>
+        <Style Selector="RadioButton:checked:pointerover /template/ Ellipse#OuterEllipse">
+            <Setter Property="Stroke" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="Fill" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="Opacity" Value="0.9" />
+        </Style>
+        <Style Selector="RadioButton:checked:pointerover /template/ Ellipse#CheckOuterEllipse">
+            <Setter Property="Stroke" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="Fill" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="Opacity" Value="0.9" />
+        </Style>
+        <Style Selector="RadioButton:checked:pointerover /template/ Ellipse#CheckGlyph">
+            <Setter Property="Fill" Value="{DynamicResource ActiveChipForeground}" />
+        </Style>
+        <Style Selector="RadioButton:checked:pressed /template/ Ellipse#CheckOuterEllipse">
+            <Setter Property="Stroke" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="Fill" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="Opacity" Value="0.8" />
+        </Style>
+        <Style Selector="RadioButton:checked:pressed /template/ Ellipse#CheckGlyph">
+            <Setter Property="Fill" Value="{DynamicResource ActiveChipForeground}" />
+        </Style>
+        <Style Selector="RadioButton:pressed">
+            <Setter Property="Opacity" Value="0.8" />
+        </Style>
+
+        <Style Selector="ToggleSwitch:checked /template/ Border#SwitchKnobBounds">
+            <Setter Property="Background" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ActiveChipBackground}" />
+        </Style>
+        <Style Selector="ToggleSwitch:checked /template/ Ellipse#SwitchKnobOn">
+            <Setter Property="Fill" Value="{DynamicResource ActiveChipForeground}" />
+        </Style>
+        <Style Selector="ToggleSwitch:checked:pointerover /template/ Border#SwitchKnobBounds">
+            <Setter Property="Background" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="Opacity" Value="0.9" />
+        </Style>
+        <Style Selector="ToggleSwitch:checked:pointerover /template/ Ellipse#SwitchKnobOn">
+            <Setter Property="Fill" Value="{DynamicResource ActiveChipForeground}" />
+        </Style>
+        <Style Selector="ToggleSwitch:checked:pressed /template/ Border#SwitchKnobBounds">
+            <Setter Property="Background" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="Opacity" Value="0.8" />
+        </Style>
+        <Style Selector="ToggleSwitch:checked:pressed /template/ Ellipse#SwitchKnobOn">
+            <Setter Property="Fill" Value="{DynamicResource ActiveChipForeground}" />
+        </Style>
+
+        <!-- Slider (Monochrome Pill Track with Expanding Circular Thumb) -->
+        <Style Selector="Slider">
+            <Setter Property="FocusAdorner" Value="{x:Null}" />
+            <Setter Property="Foreground" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="MinHeight" Value="32" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="ClipToBounds" Value="False" />
+            <Setter Property="Template">
+                <ControlTemplate TargetType="Slider">
+                    <Panel Height="36" VerticalAlignment="Center" ClipToBounds="False">
+                        <!-- Background Pill Track: 轨道高度 8px，圆角 4px 完全半圆端点 -->
+                        <Border Name="TrackBackground"
+                                Height="8"
+                                CornerRadius="4"
+                                Background="{DynamicResource SearchBackground}"
+                                BorderBrush="{DynamicResource SearchBorderBrush}"
+                                BorderThickness="1"
+                                VerticalAlignment="Center"
+                                ClipToBounds="True" />
+
+                        <!-- Interactive Track -->
+                        <Track Name="PART_Track"
+                               Minimum="{TemplateBinding Minimum}"
+                               Maximum="{TemplateBinding Maximum}"
+                               Value="{TemplateBinding Value, Mode=TwoWay}"
+                               Orientation="{TemplateBinding Orientation}"
+                               Height="36"
+                               VerticalAlignment="Center"
+                               ClipToBounds="False">
+                            <Track.DecreaseButton>
+                                <RepeatButton Name="PART_DecreaseButton"
+                                              Focusable="False"
+                                              ClipToBounds="False"
+                                              Background="{DynamicResource ActiveChipBackground}"
+                                              VerticalAlignment="Stretch"
+                                              HorizontalAlignment="Stretch">
+                                    <RepeatButton.Template>
+                                        <ControlTemplate TargetType="RepeatButton">
+                                            <!-- 已填充轨道：高度 8px，左右两端均为圆角端点（CornerRadius="4"），右端 Margin 延伸 18px 与 36px 滑块中心严格对齐 -->
+                                            <Border Height="8"
+                                                    CornerRadius="4"
+                                                    Margin="0,0,-18,0"
+                                                    ClipToBounds="False"
+                                                    Background="{TemplateBinding Background}"
+                                                    VerticalAlignment="Center" />
+                                        </ControlTemplate>
+                                    </RepeatButton.Template>
+                                </RepeatButton>
+                            </Track.DecreaseButton>
+                            <Track.IncreaseButton>
+                                <RepeatButton Name="PART_IncreaseButton"
+                                              Focusable="False"
+                                              Background="Transparent"
+                                              VerticalAlignment="Stretch"
+                                              HorizontalAlignment="Stretch">
+                                    <RepeatButton.Template>
+                                        <ControlTemplate TargetType="RepeatButton">
+                                            <Border Height="8"
+                                                    Background="Transparent"
+                                                    VerticalAlignment="Center" />
+                                        </ControlTemplate>
+                                    </RepeatButton.Template>
+                                </RepeatButton>
+                            </Track.IncreaseButton>
+                            <Track.Thumb>
+                                <Thumb Name="PART_Thumb"
+                                       Classes="SliderPillThumb"
+                                       Focusable="False"
+                                       Width="36"
+                                       Height="36"
+                                       ClipToBounds="False"
+                                       ZIndex="1"
+                                       Cursor="Hand"
+                                       VerticalAlignment="Center">
+                                    <Thumb.Template>
+                                        <ControlTemplate TargetType="Thumb">
+                                            <Panel Width="36" Height="36" Background="Transparent" ClipToBounds="False">
+                                                <Border Name="ThumbCircle"
+                                                        Width="24"
+                                                        Height="24"
+                                                        CornerRadius="18"
+                                                        Background="{DynamicResource ActiveChipBackground}"
+                                                        BorderBrush="{DynamicResource ActiveChipForeground}"
+                                                        BorderThickness="2"
+                                                        VerticalAlignment="Center"
+                                                        HorizontalAlignment="Center">
+                                                    <Border.Transitions>
+                                                        <Transitions>
+                                                            <DoubleTransition Property="Width" Duration="0:0:0.18" Easing="CubicEaseOut" />
+                                                            <DoubleTransition Property="Height" Duration="0:0:0.18" Easing="CubicEaseOut" />
+                                                        </Transitions>
+                                                    </Border.Transitions>
+                                                </Border>
+                                            </Panel>
+                                        </ControlTemplate>
+                                    </Thumb.Template>
+                                </Thumb>
+                            </Track.Thumb>
+                        </Track>
+                    </Panel>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="Slider /template/ RepeatButton#PART_DecreaseButton">
+            <Setter Property="Background" Value="{DynamicResource ActiveChipBackground}" />
+        </Style>
+        <Style Selector="Thumb.SliderPillThumb /template/ Border#ThumbCircle">
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ActiveChipForeground}" />
+            <Setter Property="Background" Value="{DynamicResource ActiveChipBackground}" />
+        </Style>
+        <Style Selector="Thumb.SliderPillThumb:pointerover /template/ Border#ThumbCircle">
+            <Setter Property="Width" Value="36" />
+            <Setter Property="Height" Value="36" />
+        </Style>
+        <Style Selector="Thumb.SliderPillThumb:pressed /template/ Border#ThumbCircle">
+            <Setter Property="Width" Value="36" />
+            <Setter Property="Height" Value="36" />
+        </Style>
+        <Style Selector="Slider:pointerover Thumb.SliderPillThumb /template/ Border#ThumbCircle">
+            <Setter Property="Width" Value="36" />
+            <Setter Property="Height" Value="36" />
+        </Style>
+
+        <!-- NumericUpDown (Monochrome Blueprint Style) -->
+        <Style Selector="NumericUpDown">
+            <Setter Property="FocusAdorner" Value="{x:Null}" />
+            <Setter Property="Background" Value="{DynamicResource SearchBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource HairlineBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="{DynamicResource KeyHintCornerRadius}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="FontSize" Value="{DynamicResource BodyFontSize}" />
+            <Setter Property="FontWeight" Value="{DynamicResource NormalFontWeight}" />
+            <Setter Property="MinHeight" Value="32" />
+            <Setter Property="Padding" Value="8,2" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="ClipToBounds" Value="True" />
+        </Style>
+        <Style Selector="NumericUpDown:pointerover">
+            <Setter Property="BorderBrush" Value="{DynamicResource TextSecondaryBrush}" />
+            <Setter Property="Background" Value="{DynamicResource CardHoverBrush}" />
+        </Style>
+        <Style Selector="NumericUpDown:focus-within">
+            <Setter Property="BorderBrush" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="Background" Value="{DynamicResource SearchBackground}" />
+        </Style>
+        <!-- ButtonSpinner inside NumericUpDown: Vertically Stacked Arrow Buttons on Right -->
+        <Style Selector="NumericUpDown /template/ ButtonSpinner">
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Template">
+                <ControlTemplate TargetType="ButtonSpinner">
+                    <DataValidationErrors>
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="{TemplateBinding CornerRadius}">
+                            <DockPanel>
+                                <!-- 右侧上下排布的箭头微调按钮 -->
+                                <Grid Name="PART_SpinnerPanel"
+                                      DockPanel.Dock="Right"
+                                      RowDefinitions="*,*"
+                                      Width="20"
+                                      VerticalAlignment="Stretch"
+                                      IsVisible="{TemplateBinding ShowButtonSpinner}">
+                                    <RepeatButton Name="PART_IncreaseButton"
+                                                  Grid.Row="0"
+                                                  Classes="NumericSpinnerButton"
+                                                  Focusable="False"
+                                                  CornerRadius="0,5,0,0"
+                                                  HorizontalAlignment="Stretch"
+                                                  VerticalAlignment="Stretch"
+                                                  HorizontalContentAlignment="Center"
+                                                  VerticalContentAlignment="Center"
+                                                  Cursor="Hand"
+                                                  Background="Transparent"
+                                                  BorderThickness="0"
+                                                  Padding="0">
+                                        <Path Data="M 0 3.5 L 3.5 0 L 7 3.5"
+                                              Stroke="{DynamicResource TextSecondaryBrush}"
+                                              StrokeThickness="1.3"
+                                              StrokeLineCap="Round"
+                                              StrokeJoin="Round"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                                    </RepeatButton>
+                                    <RepeatButton Name="PART_DecreaseButton"
+                                                  Grid.Row="1"
+                                                  Classes="NumericSpinnerButton"
+                                                  Focusable="False"
+                                                  CornerRadius="0,0,5,0"
+                                                  HorizontalAlignment="Stretch"
+                                                  VerticalAlignment="Stretch"
+                                                  HorizontalContentAlignment="Center"
+                                                  VerticalContentAlignment="Center"
+                                                  Cursor="Hand"
+                                                  Background="Transparent"
+                                                  BorderThickness="0"
+                                                  Padding="0">
+                                        <Path Data="M 0 0 L 3.5 3.5 L 7 0"
+                                              Stroke="{DynamicResource TextSecondaryBrush}"
+                                              StrokeThickness="1.3"
+                                              StrokeLineCap="Round"
+                                              StrokeJoin="Round"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                                    </RepeatButton>
+                                </Grid>
+
+                                <ContentPresenter Name="PART_ContentPresenter"
+                                                  Content="{TemplateBinding Content}"
+                                                  ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                  HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                  Padding="{TemplateBinding Padding}" />
+                            </DockPanel>
+                        </Border>
+                    </DataValidationErrors>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+        <Style Selector="RepeatButton.NumericSpinnerButton">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="MinWidth" Value="18" />
+            <Setter Property="MinHeight" Value="0" />
+        </Style>
+        <Style Selector="RepeatButton.NumericSpinnerButton:pointerover">
+            <Setter Property="Background" Value="{DynamicResource CardHoverBrush}" />
+        </Style>
+        <Style Selector="RepeatButton.NumericSpinnerButton:pointerover Path">
+            <Setter Property="Stroke" Value="{DynamicResource TextPrimaryBrush}" />
+        </Style>
+        <Style Selector="RepeatButton.NumericSpinnerButton:pressed">
+            <Setter Property="Background" Value="{DynamicResource CardSelectedBrush}" />
+            <Setter Property="Opacity" Value="0.8" />
+        </Style>
+        <Style Selector="RepeatButton.NumericSpinnerButton:pressed Path">
+            <Setter Property="Stroke" Value="{DynamicResource TextPrimaryBrush}" />
+        </Style>
+
+        <!-- Modern ScrollViewer & ScrollBar Native Styling -->
+        <Style Selector="ScrollViewer">
+            <Setter Property="Padding" Value="16,0,16,0" />
+            <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
+            <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
+        </Style>
+
+        <Style Selector="ScrollViewer /template/ ScrollBar:vertical">
+            <Setter Property="Width" Value="6" />
+            <Setter Property="MinWidth" Value="6" />
+            <Setter Property="Margin" Value="0,4,5,4" />
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.25" Easing="CubicEaseOut" />
+                </Transitions>
+            </Setter>
+        </Style>
+
+        <!-- Only display scrollbar when actively scrolling or pointer directly over scrollbar -->
+        <Style Selector="ScrollViewer /template/ ScrollBar.scrolling:vertical">
+            <Setter Property="Opacity" Value="0.85" />
+        </Style>
+
+        <Style Selector="ScrollViewer /template/ ScrollBar:vertical:pointerover">
+            <Setter Property="Opacity" Value="1.0" />
+        </Style>
+
+        <!-- Hide legacy clunky arrow buttons -->
+        <Style Selector="ScrollBar /template/ RepeatButton#PART_LineUpButton">
+            <Setter Property="IsVisible" Value="False" />
+            <Setter Property="Height" Value="0" />
+        </Style>
+        <Style Selector="ScrollBar /template/ RepeatButton#PART_LineDownButton">
+            <Setter Property="IsVisible" Value="False" />
+            <Setter Property="Height" Value="0" />
+        </Style>
+        <Style Selector="ScrollBar /template/ RepeatButton#PART_PageUpButton">
+            <Setter Property="Opacity" Value="0" />
+        </Style>
+        <Style Selector="ScrollBar /template/ RepeatButton#PART_PageDownButton">
+            <Setter Property="Opacity" Value="0" />
+        </Style>
+
+        <!-- Modern Rounded Capsule Thumb -->
+        <Style Selector="ScrollBar:vertical /template/ Thumb">
+            <Setter Property="Width" Value="6" />
+            <Setter Property="MinWidth" Value="6" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Background" Value="{DynamicResource MidGrayBrush}" />
+        </Style>
+        <Style Selector="ScrollBar:vertical /template/ Thumb:pointerover">
+            <Setter Property="Background" Value="{DynamicResource TextSecondaryBrush}" />
+        </Style>
+
+        <!-- ==================== ComboBox Custom Styles (Monochrome Blueprint) ==================== -->
+        <Style Selector="ComboBox">
+            <Style.Resources>
+                <CornerRadius x:Key="OverlayCornerRadius">6</CornerRadius>
+                <StaticResource x:Key="ComboBoxDropDownBackground" ResourceKey="FlyoutBackground" />
+                <StaticResource x:Key="ComboBoxDropDownBorderBrush" ResourceKey="CardBorderBrush" />
+                <Thickness x:Key="ComboBoxDropdownContentPadding">0</Thickness>
+            </Style.Resources>
+            <Setter Property="FocusAdorner" Value="{x:Null}" />
+            <Setter Property="Background" Value="{DynamicResource SearchBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource HairlineBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="FontSize" Value="{DynamicResource SubBodyFontSize}" />
+            <Setter Property="FontWeight" Value="{DynamicResource NormalFontWeight}" />
+            <Setter Property="Padding" Value="12,0,8,0" />
+            <Setter Property="MinHeight" Value="32" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+
+        <Style Selector="ComboBox:pointerover /template/ Border#Background">
+            <Setter Property="Background" Value="{DynamicResource CardHoverBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource TextSecondaryBrush}" />
+        </Style>
+        <Style Selector="ComboBox:pointerover">
+            <Setter Property="BorderBrush" Value="{DynamicResource TextSecondaryBrush}" />
+        </Style>
+
+        <Style Selector="ComboBox:focus /template/ Border#Background">
+            <Setter Property="Background" Value="{DynamicResource CardHoverBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource TextSecondaryBrush}" />
+        </Style>
+        <Style Selector="ComboBox:pressed /template/ Border#Background">
+            <Setter Property="Background" Value="{DynamicResource CardSelectedBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource TextSecondaryBrush}" />
+        </Style>
+
+        <Style Selector="ComboBox:dropdownopen /template/ Border#Background">
+            <Setter Property="Background" Value="{DynamicResource CardHoverBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource TextSecondaryBrush}" />
+        </Style>
+
+        <Style Selector="ComboBox /template/ PathIcon#DropDownGlyph">
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+            <Setter Property="Width" Value="9" />
+            <Setter Property="Height" Value="9" />
+            <Setter Property="Margin" Value="4,0,4,0" />
+        </Style>
+        <Style Selector="ComboBox:pointerover /template/ PathIcon#DropDownGlyph">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+        </Style>
+        <Style Selector="ComboBox:dropdownopen /template/ PathIcon#DropDownGlyph">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+        </Style>
+
+        <!-- Popup Dropdown Container -->
+        <Style Selector="ComboBox /template/ Popup#PART_Popup">
+            <Setter Property="WindowManagerAddShadowHint" Value="False" />
+        </Style>
+        <Style Selector="ComboBox /template/ Popup#PART_Popup Border#PopupBorder">
+            <Setter Property="Background" Value="{DynamicResource FlyoutBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="BoxShadow" Value="0 8 24 #80000000" />
+            <Setter Property="Padding" Value="4" />
+            <Setter Property="Margin" Value="0,4,0,4" />
+        </Style>
+        <Style Selector="ComboBox /template/ Popup#PART_Popup ScrollViewer">
+            <Setter Property="Padding" Value="0" />
+        </Style>
+        <Style Selector="ComboBox /template/ Popup#PART_Popup ScrollContentPresenter">
+            <Setter Property="Padding" Value="0" />
+        </Style>
+
+        <!-- ComboBoxItem Styles -->
+        <Style Selector="ComboBoxItem">
+            <Setter Property="FocusAdorner" Value="{x:Null}" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="Margin" Value="0,1" />
+            <Setter Property="MinHeight" Value="32" />
+            <Setter Property="FontSize" Value="{DynamicResource SubBodyFontSize}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="ComboBoxItem /template/ Border#LayoutRoot">
+            <Setter Property="CornerRadius" Value="4" />
+        </Style>
+        <Style Selector="ComboBoxItem /template/ ContentPresenter">
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        </Style>
+        <Style Selector="ComboBoxItem:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource CardHoverBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+        </Style>
+        <Style Selector="ComboBoxItem:selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource CardSelectedBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="FontWeight" Value="{DynamicResource TitleFontWeight}" />
+        </Style>
+        <Style Selector="ComboBoxItem:selected:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource CardSelectedBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="FontWeight" Value="{DynamicResource TitleFontWeight}" />
+        </Style>
+        <Style Selector="ComboBoxItem:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource CardSelectedBrush}" />
+            <Setter Property="Opacity" Value="0.85" />
+        </Style>
+    </Window.Styles>
+
+    <Panel>
+        <Border Background="{DynamicResource SurfaceBackground}"
+                CornerRadius="{DynamicResource WindowCornerRadius}"
+                BorderBrush="{DynamicResource WindowBorderBrush}"
+                BorderThickness="{DynamicResource WindowBorderThickness}"
+                ClipToBounds="True">
+            <Grid RowDefinitions="Auto,Auto,*,Auto">
+
+            <!-- Title bar / Header -->
+            <Border x:Name="TitleBar" Grid.Row="0" Padding="16,14,14,10" Background="Transparent">
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Grid.Column="0"
+                               Text="{Binding L[Settings_Title]}"
+                               FontSize="{DynamicResource PageTitleFontSize}"
+                               FontWeight="{DynamicResource TitleFontWeight}"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               VerticalAlignment="Center" />
+
+                    <controls:IconButton Grid.Column="1"
+                                         IconKind="Close"
+                                         IconSize="14"
+                                         ToolTipText="{Binding L[Dialog_Close]}"
+                                         Click="OnCloseClicked" />
+                </Grid>
+            </Border>
+
+            <!-- Tab Header -->
+            <Border Grid.Row="1" Padding="16,0,16,8">
+                <controls:UnderlineTabBar x:Name="SettingsTabBar"
+                                          SelectedValue="General"
+                                          ItemSpacing="4">
+                    <controls:UnderlineTabItem x:Name="TabGeneral" Content="{Binding L[Settings_Tab_General], FallbackValue='常规'}" Value="General" />
+                    <controls:UnderlineTabItem x:Name="TabAppearance" Content="{Binding L[Settings_Tab_Appearance], FallbackValue='外观'}" Value="Appearance" />
+                    <controls:UnderlineTabItem x:Name="TabHotkey" Content="{Binding L[Settings_Tab_Hotkey], FallbackValue='快捷键'}" Value="Hotkey" />
+                    <controls:UnderlineTabItem x:Name="TabData" Content="{Binding L[Settings_Tab_Data], FallbackValue='数据'}" Value="Data" />
+                    <controls:UnderlineTabItem x:Name="TabAdvanced" Content="{Binding L[Settings_Tab_Advanced], FallbackValue='高级'}" Value="Advanced" />
+                    <controls:UnderlineTabItem x:Name="TabAbout" Content="{Binding L[Settings_Tab_About], FallbackValue='关于'}" Value="About" />
+                </controls:UnderlineTabBar>
+            </Border>
+
+            <Rectangle Grid.Row="1" Height="1" Fill="{DynamicResource DividerBrush}" VerticalAlignment="Bottom" Margin="16,0" />
+
+            <!-- Panels -->
+            <Grid Grid.Row="2" Margin="0,12">
+
+                <!-- 1. General Panel -->
+                <ScrollViewer x:Name="PanelGeneral" IsVisible="True">
+                    <StackPanel Spacing="16" Margin="0,0,0,16">
+                        <!-- Language Card -->
+                        <Border Background="{DynamicResource CardBackground}"
+                                BorderBrush="{DynamicResource CardBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{DynamicResource ItemCardCornerRadius}"
+                                Padding="16,14">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding L[Settings_Language]}"
+                                               FontSize="{DynamicResource SectionTitleFontSize}"
+                                               FontWeight="{DynamicResource BodyFontWeight}"
+                                               Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    <TextBlock Text="{Binding L[Settings_Language_Desc]}"
+                                               FontSize="{DynamicResource SubBodyFontSize}"
+                                               Foreground="{DynamicResource TextSecondaryBrush}" />
+                                </StackPanel>
+                                <ComboBox x:Name="LanguageComboBox"
+                                          Grid.Column="1"
+                                          ItemsSource="{Binding SupportedLanguages}"
+                                          SelectedItem="{Binding SelectedLanguage, Mode=TwoWay}"
+                                          MinWidth="130"
+                                          VerticalAlignment="Center">
+                                    <ComboBox.SelectionBoxItemTemplate>
+                                        <DataTemplate x:DataType="models:LanguageInfo">
+                                            <TextBlock Text="{Binding NativeName}"
+                                                       FontSize="{DynamicResource SubBodyFontSize}"
+                                                       Foreground="{DynamicResource TextPrimaryBrush}"
+                                                       VerticalAlignment="Center" />
+                                        </DataTemplate>
+                                    </ComboBox.SelectionBoxItemTemplate>
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate x:DataType="models:LanguageInfo">
+                                            <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Stretch" VerticalAlignment="Center">
+                                                <TextBlock Grid.Column="0"
+                                                           Text="{Binding NativeName}"
+                                                           FontSize="{DynamicResource SubBodyFontSize}"
+                                                           Foreground="{DynamicResource TextPrimaryBrush}"
+                                                           HorizontalAlignment="Left"
+                                                           VerticalAlignment="Center" />
+                                                <controls:AppIcon Grid.Column="1"
+                                                                  Kind="Check"
+                                                                  Size="12"
+                                                                  Foreground="{DynamicResource TextPrimaryBrush}"
+                                                                  HorizontalAlignment="Right"
+                                                                  VerticalAlignment="Center"
+                                                                  Margin="8,0,2,0"
+                                                                  IsVisible="{Binding $parent[ComboBoxItem].IsSelected}" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                            </Grid>
+                        </Border>
+
+                        <!-- Auto Start -->
+                        <Border Background="{DynamicResource CardBackground}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource ItemCardCornerRadius}" Padding="16,12">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" Spacing="2">
+                                    <TextBlock Text="{Binding L[Settings_General_AutoStart]}" FontSize="{DynamicResource SectionTitleFontSize}" FontWeight="{DynamicResource BodyFontWeight}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    <TextBlock Text="{Binding L[Settings_General_AutoStart_Desc]}" FontSize="{DynamicResource SubBodyFontSize}" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                </StackPanel>
+                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding StartWithSystem, Mode=TwoWay}" OnContent="" OffContent="" />
+                            </Grid>
+                        </Border>
+
+                        <!-- Start Empty History -->
+                        <Border Background="{DynamicResource CardBackground}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource ItemCardCornerRadius}" Padding="16,12">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" Spacing="2">
+                                    <TextBlock Text="{Binding L[Settings_General_StartEmpty]}" FontSize="{DynamicResource SectionTitleFontSize}" FontWeight="{DynamicResource BodyFontWeight}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    <TextBlock Text="{Binding L[Settings_General_StartEmpty_Desc]}" FontSize="{DynamicResource SubBodyFontSize}" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                </StackPanel>
+                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding StartEmptyHistory, Mode=TwoWay}" OnContent="" OffContent="" />
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- 2. Appearance Panel -->
+                <ScrollViewer x:Name="PanelAppearance" IsVisible="False">
+                    <StackPanel Spacing="16" Margin="0,0,0,16">
+                        <Border Background="{DynamicResource CardBackground}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource ItemCardCornerRadius}" Padding="16,14">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="{Binding L[Settings_Appearance_Theme]}" FontSize="{DynamicResource SectionTitleFontSize}" FontWeight="{DynamicResource BodyFontWeight}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                <StackPanel Orientation="Horizontal" Spacing="20">
+                                    <RadioButton x:Name="ThemeSystemRadio" Content="{Binding L[Settings_Appearance_System]}" GroupName="ThemeModeGroup" Checked="OnThemeSystemChecked" FontSize="{DynamicResource BodyFontSize}" FontWeight="{DynamicResource NormalFontWeight}" />
+                                    <RadioButton x:Name="ThemeLightRadio" Content="{Binding L[Settings_Appearance_Light]}" GroupName="ThemeModeGroup" Checked="OnThemeLightChecked" FontSize="{DynamicResource BodyFontSize}" FontWeight="{DynamicResource NormalFontWeight}" />
+                                    <RadioButton x:Name="ThemeDarkRadio" Content="{Binding L[Settings_Appearance_Dark]}" GroupName="ThemeModeGroup" Checked="OnThemeDarkChecked" FontSize="{DynamicResource BodyFontSize}" FontWeight="{DynamicResource NormalFontWeight}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- 3. Hotkey Panel -->
+                <ScrollViewer x:Name="PanelHotkey" IsVisible="False">
+                    <StackPanel Spacing="16" Margin="0,0,0,16">
+                        <Border Background="{DynamicResource CardBackground}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource ItemCardCornerRadius}" Padding="16,14">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="{Binding L[Settings_Hotkey_Title]}" FontSize="{DynamicResource SectionTitleFontSize}" FontWeight="{DynamicResource BodyFontWeight}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                <TextBlock Text="{Binding L[Settings_Hotkey_Desc]}" FontSize="{DynamicResource SubBodyFontSize}" Foreground="{DynamicResource TextSecondaryBrush}" />
+
+                                <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,8,0,0">
+                                    <Border Grid.Column="0"
+                                            Background="{DynamicResource SearchBackground}"
+                                            CornerRadius="{DynamicResource SearchBoxCornerRadius}"
+                                            BorderBrush="{DynamicResource SearchBorderBrush}"
+                                            BorderThickness="1"
+                                            Padding="12,8">
+                                        <TextBlock Text="{Binding HotkeyDisplay}"
+                                                   FontWeight="{DynamicResource TitleFontWeight}"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                                   VerticalAlignment="Center" />
+                                    </Border>
+
+                                    <Button Grid.Column="1"
+                                            Content="{Binding RecordHotkeyButtonText}"
+                                            Command="{Binding StartRecordingHotkeyCommand}"
+                                            Background="{DynamicResource SearchBackground}"
+                                            BorderBrush="{DynamicResource HairlineBrush}"
+                                            BorderThickness="1"
+                                            Foreground="{DynamicResource TextPrimaryBrush}"
+                                            CornerRadius="{DynamicResource KeyHintCornerRadius}"
+                                            Margin="8,0,0,0"
+                                            Padding="14,8" />
+
+                                    <Button Grid.Column="2"
+                                            Content="{Binding L[Settings_Hotkey_Reset]}"
+                                            Command="{Binding ResetHotkeyDefaultCommand}"
+                                            Background="{DynamicResource SearchBackground}"
+                                            BorderBrush="{DynamicResource HairlineBrush}"
+                                            BorderThickness="1"
+                                            Foreground="{DynamicResource TextSecondaryBrush}"
+                                            CornerRadius="{DynamicResource KeyHintCornerRadius}"
+                                            Margin="8,0,0,0"
+                                            Padding="12,8" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Shortcuts Reference Card -->
+                        <Border Background="{DynamicResource CardBackground}"
+                                BorderBrush="{DynamicResource CardBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{DynamicResource ItemCardCornerRadius}"
+                                Padding="16,14">
+                            <StackPanel Spacing="12">
+                                <StackPanel Spacing="2">
+                                    <TextBlock Text="{Binding L[Settings_Hotkey_CheatSheet_Title]}"
+                                               FontSize="{DynamicResource SectionTitleFontSize}"
+                                               FontWeight="{DynamicResource BodyFontWeight}"
+                                               Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    <TextBlock Text="{Binding L[Settings_Hotkey_CheatSheet_Desc]}"
+                                               FontSize="{DynamicResource SubBodyFontSize}"
+                                               Foreground="{DynamicResource TextSecondaryBrush}" />
+                                </StackPanel>
+
+                                <!-- Table Header -->
+                                <Grid ColumnDefinitions="*,Auto" Margin="4,4,4,2">
+                                    <TextBlock Text="{Binding L[Settings_Shortcut_Header_Action]}"
+                                               FontSize="{DynamicResource CaptionFontSize}"
+                                               FontWeight="{DynamicResource TitleFontWeight}"
+                                               Foreground="{DynamicResource TextTertiaryBrush}" />
+                                    <TextBlock Grid.Column="1"
+                                               Text="{Binding L[Settings_Shortcut_Header_Key]}"
+                                               FontSize="{DynamicResource CaptionFontSize}"
+                                               FontWeight="{DynamicResource TitleFontWeight}"
+                                               Foreground="{DynamicResource TextTertiaryBrush}" />
+                                </Grid>
+
+                                <Rectangle Height="1" Fill="{DynamicResource DividerBrush}" Margin="0,2,0,4" />
+
+                                <!-- Section 1: Main Panel Navigation -->
+                                <TextBlock Text="{Binding L[Settings_Shortcut_Group_Panel]}"
+                                           FontSize="{DynamicResource CaptionFontSize}"
+                                           FontWeight="{DynamicResource TitleFontWeight}"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           Margin="4,4,0,2" />
+
+                                <Grid ColumnDefinitions="*,Auto" Margin="4,3">
+                                    <TextBlock Text="{Binding L[Settings_Shortcut_Summon]}" FontSize="{DynamicResource SubBodyFontSize}" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                                    <Border Grid.Column="1" Background="{DynamicResource KeyHintBackground}" BorderBrush="{DynamicResource KeyHintBorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource KeyHintCornerRadius}" Padding="6,2">
+                                        <TextBlock Text="{Binding HotkeyDisplay}" FontSize="{DynamicResource CaptionFontSize}" FontWeight="{DynamicResource TitleFontWeight}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    </Border>
+                                </Grid>
+
+                                <Grid ColumnDefinitions="*,Auto" Margin="4,3">
+                                    <TextBlock Text="{Binding L[Settings_Shortcut_Category]}" FontSize="{DynamicResource SubBodyFontSize}" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                                    <Border Grid.Column="1" Background="{DynamicResource KeyHintBackground}" BorderBrush="{DynamicResource KeyHintBorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource KeyHintCornerRadius}" Padding="6,2">
+                                        <TextBlock Text="{DynamicResource KeyHintCategory}" FontSize="{DynamicResource CaptionFontSize}" FontWeight="{DynamicResource TitleFontWeight}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    </Border>
+                                </Grid>
+
+
+                                <Grid ColumnDefinitions="*,Auto" Margin="4,3">
+                                    <TextBlock Text="{Binding L[Settings_Shortcut_Navigate]}" FontSize="{DynamicResource SubBodyFontSize}" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                                    <Border Grid.Column="1" Background="{DynamicResource KeyHintBackground}" BorderBrush="{DynamicResource KeyHintBorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource KeyHintCornerRadius}" Padding="6,2">
+                                        <TextBlock Text="{DynamicResource KeyHintNav}" FontSize="{DynamicResource CaptionFontSize}" FontWeight="{DynamicResource TitleFontWeight}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    </Border>
+                                </Grid>
+
+                                <Grid ColumnDefinitions="*,Auto" Margin="4,3">
+                                    <TextBlock Text="{Binding L[Settings_Shortcut_Paste]}" FontSize="{DynamicResource SubBodyFontSize}" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                                    <Border Grid.Column="1" Background="{DynamicResource KeyHintBackground}" BorderBrush="{DynamicResource KeyHintBorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource KeyHintCornerRadius}" Padding="6,2">
+                                        <TextBlock Text="{DynamicResource KeyHintPaste}" FontSize="{DynamicResource CaptionFontSize}" FontWeight="{DynamicResource TitleFontWeight}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    </Border>
+                                </Grid>
+
+                                <Grid ColumnDefinitions="*,Auto" Margin="4,3">
+                                    <TextBlock Text="{Binding L[Settings_Shortcut_Close]}" FontSize="{DynamicResource SubBodyFontSize}" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                                    <Border Grid.Column="1" Background="{DynamicResource KeyHintBackground}" BorderBrush="{DynamicResource KeyHintBorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource KeyHintCornerRadius}" Padding="6,2">
+                                        <TextBlock Text="{DynamicResource KeyHintClose}" FontSize="{DynamicResource CaptionFontSize}" FontWeight="{DynamicResource TitleFontWeight}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    </Border>
+                                </Grid>
+
+                                <Rectangle Height="1" Fill="{DynamicResource DividerBrush}" Margin="0,4" />
+
+                                <!-- Section 2: Item Actions -->
+                                <TextBlock Text="{Binding L[Settings_Shortcut_Group_Item]}"
+                                           FontSize="{DynamicResource CaptionFontSize}"
+                                           FontWeight="{DynamicResource TitleFontWeight}"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           Margin="4,4,0,2" />
+
+                                <Grid ColumnDefinitions="*,Auto" Margin="4,3">
+                                    <TextBlock Text="{Binding L[Settings_Shortcut_Copy]}" FontSize="{DynamicResource SubBodyFontSize}" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                                    <Border Grid.Column="1" Background="{DynamicResource KeyHintBackground}" BorderBrush="{DynamicResource KeyHintBorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource KeyHintCornerRadius}" Padding="6,2">
+                                        <TextBlock Text="{DynamicResource ShortcutCopyText}" FontSize="{DynamicResource CaptionFontSize}" FontWeight="{DynamicResource TitleFontWeight}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    </Border>
+                                </Grid>
+
+                                <Grid ColumnDefinitions="*,Auto" Margin="4,3">
+                                    <TextBlock Text="{Binding L[Settings_Shortcut_Edit]}" FontSize="{DynamicResource SubBodyFontSize}" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                                    <Border Grid.Column="1" Background="{DynamicResource KeyHintBackground}" BorderBrush="{DynamicResource KeyHintBorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource KeyHintCornerRadius}" Padding="6,2">
+                                        <TextBlock Text="{DynamicResource ShortcutEditText}" FontSize="{DynamicResource CaptionFontSize}" FontWeight="{DynamicResource TitleFontWeight}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    </Border>
+                                </Grid>
+
+                                <Grid ColumnDefinitions="*,Auto" Margin="4,3">
+                                    <TextBlock Text="{Binding L[Settings_Shortcut_Favorite]}" FontSize="{DynamicResource SubBodyFontSize}" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                                    <Border Grid.Column="1" Background="{DynamicResource KeyHintBackground}" BorderBrush="{DynamicResource KeyHintBorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource KeyHintCornerRadius}" Padding="6,2">
+                                        <TextBlock Text="{DynamicResource ShortcutFavoriteText}" FontSize="{DynamicResource CaptionFontSize}" FontWeight="{DynamicResource TitleFontWeight}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    </Border>
+                                </Grid>
+
+                                <Grid ColumnDefinitions="*,Auto" Margin="4,3">
+                                    <TextBlock Text="{Binding L[Settings_Shortcut_Delete]}" FontSize="{DynamicResource SubBodyFontSize}" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                                    <Border Grid.Column="1" Background="{DynamicResource KeyHintBackground}" BorderBrush="{DynamicResource KeyHintBorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource KeyHintCornerRadius}" Padding="6,2">
+                                        <TextBlock Text="{DynamicResource ShortcutDeleteText}" FontSize="{DynamicResource CaptionFontSize}" FontWeight="{DynamicResource TitleFontWeight}" Foreground="{DynamicResource EmberBrush}" />
+                                    </Border>
+                                </Grid>
+
+                                <Rectangle Height="1" Fill="{DynamicResource DividerBrush}" Margin="0,4" />
+
+                                <!-- Section 3: Editor & Dialogs -->
+                                <TextBlock Text="{Binding L[Settings_Shortcut_Group_Editor]}"
+                                           FontSize="{DynamicResource CaptionFontSize}"
+                                           FontWeight="{DynamicResource TitleFontWeight}"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           Margin="4,4,0,2" />
+
+                                <Grid ColumnDefinitions="*,Auto" Margin="4,3">
+                                    <TextBlock Text="{Binding L[Settings_Shortcut_Save]}" FontSize="{DynamicResource SubBodyFontSize}" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                                    <Border Grid.Column="1" Background="{DynamicResource KeyHintBackground}" BorderBrush="{DynamicResource KeyHintBorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource KeyHintCornerRadius}" Padding="6,2">
+                                        <TextBlock Text="{DynamicResource ShortcutSaveTooltip}" FontSize="{DynamicResource CaptionFontSize}" FontWeight="{DynamicResource TitleFontWeight}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    </Border>
+                                </Grid>
+
+                                <Grid ColumnDefinitions="*,Auto" Margin="4,3">
+                                    <TextBlock Text="{Binding L[Settings_Shortcut_Cancel]}" FontSize="{DynamicResource SubBodyFontSize}" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                                    <Border Grid.Column="1" Background="{DynamicResource KeyHintBackground}" BorderBrush="{DynamicResource KeyHintBorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource KeyHintCornerRadius}" Padding="6,2">
+                                        <TextBlock Text="{DynamicResource ShortcutCancelTooltip}" FontSize="{DynamicResource CaptionFontSize}" FontWeight="{DynamicResource TitleFontWeight}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    </Border>
+                                </Grid>
+
+                                <Rectangle Height="1" Fill="{DynamicResource DividerBrush}" Margin="0,4" />
+
+                                <!-- Section 4: Hotkey Recording -->
+                                <TextBlock Text="{Binding L[Settings_Shortcut_Group_Recording]}"
+                                           FontSize="{DynamicResource CaptionFontSize}"
+                                           FontWeight="{DynamicResource TitleFontWeight}"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           Margin="4,4,0,2" />
+
+                                <Grid ColumnDefinitions="*,Auto" Margin="4,3">
+                                    <TextBlock Text="{Binding L[Settings_Shortcut_Clear]}" FontSize="{DynamicResource SubBodyFontSize}" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                                    <Border Grid.Column="1" Background="{DynamicResource KeyHintBackground}" BorderBrush="{DynamicResource KeyHintBorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource KeyHintCornerRadius}" Padding="6,2">
+                                        <TextBlock Text="{DynamicResource KeyHintClear}" FontSize="{DynamicResource CaptionFontSize}" FontWeight="{DynamicResource TitleFontWeight}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    </Border>
+                                </Grid>
+
+                                <Grid ColumnDefinitions="*,Auto" Margin="4,3">
+                                    <TextBlock Text="{Binding L[Settings_Shortcut_CancelRecording]}" FontSize="{DynamicResource SubBodyFontSize}" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" />
+                                    <Border Grid.Column="1" Background="{DynamicResource KeyHintBackground}" BorderBrush="{DynamicResource KeyHintBorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource KeyHintCornerRadius}" Padding="6,2">
+                                        <TextBlock Text="{DynamicResource KeyHintClose}" FontSize="{DynamicResource CaptionFontSize}" FontWeight="{DynamicResource TitleFontWeight}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    </Border>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- 4. Data Panel -->
+                <ScrollViewer x:Name="PanelData" IsVisible="False">
+                    <StackPanel Spacing="16" Margin="0,0,0,16">
+                        <!-- 1. Auto Clean (Collapsible) -->
+                        <Border Background="{DynamicResource CardBackground}"
+                                BorderBrush="{DynamicResource CardBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{DynamicResource ItemCardCornerRadius}"
+                                Padding="16,14">
+                            <StackPanel Spacing="14">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel Grid.Column="0" Spacing="2">
+                                        <TextBlock Text="{Binding L[Settings_Data_AutoClean]}" FontSize="{DynamicResource SectionTitleFontSize}" FontWeight="{DynamicResource BodyFontWeight}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                        <TextBlock Text="{Binding L[Settings_Data_AutoClean_Desc]}" FontSize="{DynamicResource SubBodyFontSize}" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    </StackPanel>
+                                    <ToggleSwitch x:Name="AutoCleanToggle"
+                                                  Grid.Column="1"
+                                                  IsChecked="{Binding AutoCleanEnabled, Mode=TwoWay}"
+                                                  OnContent="" OffContent="" />
+                                </Grid>
+
+                                <!-- Collapsible Child: Max History Items -->
+                                <StackPanel x:Name="AutoCleanChildPanel" Spacing="12" IsVisible="{Binding #AutoCleanToggle.IsChecked}">
+                                    <Rectangle Height="1" Fill="{DynamicResource DividerBrush}" />
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <StackPanel Grid.Column="0" Spacing="2">
+                                            <TextBlock Text="{Binding L[Settings_Data_MaxItems]}" FontSize="{DynamicResource BodyFontSize}" FontWeight="{DynamicResource NormalFontWeight}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                            <TextBlock Text="{Binding L[Settings_Data_AutoClean_Desc]}" FontSize="{DynamicResource CaptionFontSize}" Foreground="{DynamicResource TextTertiaryBrush}" />
+                                        </StackPanel>
+                                        <NumericUpDown x:Name="MaxHistoryItemsInput"
+                                                       Grid.Column="1"
+                                                       Value="{Binding MaxHistoryItems, Mode=TwoWay}"
+                                                       Minimum="10" Maximum="99999" Increment="50" Width="130"
+                                                       FontSize="{DynamicResource BodyFontSize}"
+                                                       FontWeight="{DynamicResource NormalFontWeight}"
+                                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    </Grid>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 2. Periodic Clean (Collapsible) -->
+                        <Border Background="{DynamicResource CardBackground}"
+                                BorderBrush="{DynamicResource CardBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{DynamicResource ItemCardCornerRadius}"
+                                Padding="16,14">
+                            <StackPanel Spacing="14">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel Grid.Column="0" Spacing="2">
+                                        <TextBlock Text="{Binding L[Settings_Data_PeriodicClean]}" FontSize="{DynamicResource SectionTitleFontSize}" FontWeight="{DynamicResource BodyFontWeight}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                        <TextBlock Text="{Binding L[Settings_Data_PeriodicClean_Desc]}" FontSize="{DynamicResource SubBodyFontSize}" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    </StackPanel>
+                                    <ToggleSwitch x:Name="PeriodicCleanToggle"
+                                                  Grid.Column="1"
+                                                  IsChecked="{Binding PeriodicCleanEnabled, Mode=TwoWay}"
+                                                  OnContent="" OffContent="" />
+                                </Grid>
+
+                                <!-- Collapsible Child: Clean Period Days -->
+                                <StackPanel x:Name="PeriodicCleanChildPanel" Spacing="12" IsVisible="{Binding #PeriodicCleanToggle.IsChecked}">
+                                    <Rectangle Height="1" Fill="{DynamicResource DividerBrush}" />
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <StackPanel Grid.Column="0" Spacing="2">
+                                            <TextBlock Text="{Binding L[Settings_Data_CleanDays]}" FontSize="{DynamicResource BodyFontSize}" FontWeight="{DynamicResource NormalFontWeight}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                            <TextBlock Text="{Binding L[Settings_Data_PeriodicClean_Desc]}" FontSize="{DynamicResource CaptionFontSize}" Foreground="{DynamicResource TextTertiaryBrush}" />
+                                        </StackPanel>
+                                        <NumericUpDown x:Name="CleanPeriodDaysInput"
+                                                       Grid.Column="1"
+                                                       Value="{Binding CleanPeriodDays, Mode=TwoWay}"
+                                                       Minimum="1" Maximum="365" Increment="1" Width="130"
+                                                       FontSize="{DynamicResource BodyFontSize}"
+                                                       FontWeight="{DynamicResource NormalFontWeight}"
+                                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    </Grid>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 3. Clear All -->
+                        <Border Background="{DynamicResource CardBackground}"
+                                BorderBrush="{DynamicResource CardBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{DynamicResource ItemCardCornerRadius}"
+                                Padding="16,14">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" Spacing="2">
+                                    <TextBlock Text="{Binding L[Settings_Data_ClearAll]}" FontSize="{DynamicResource SectionTitleFontSize}" FontWeight="{DynamicResource BodyFontWeight}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    <TextBlock Text="{Binding L[Settings_Data_ClearAll_Desc]}" FontSize="{DynamicResource SubBodyFontSize}" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                </StackPanel>
+                                <Button x:Name="ClearAllDataButton"
+                                        Grid.Column="1"
+                                        Content="{Binding L[Settings_Data_ClearAll_Btn]}"
+                                        Click="OnClearAllDataClicked"
+                                        Background="{DynamicResource DestructiveBrush}"
+                                        Foreground="White"
+                                        Padding="14,6"
+                                        CornerRadius="6"
+                                        FontWeight="{DynamicResource BodyFontWeight}"
+                                        Cursor="Hand" />
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- 5. Advanced Panel -->
+                <ScrollViewer x:Name="PanelAdvanced" IsVisible="False">
+                    <StackPanel Spacing="16" Margin="0,0,0,16">
+                        <Border Background="{DynamicResource CardBackground}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource ItemCardCornerRadius}" Padding="16,14">
+                            <StackPanel Spacing="12">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel Grid.Column="0" Spacing="4" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding L[Settings_Advanced_PasteDelay]}" FontSize="{DynamicResource SectionTitleFontSize}" FontWeight="{DynamicResource BodyFontWeight}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                        <TextBlock Text="{Binding L[Settings_Advanced_PasteDelay_Desc]}" FontSize="{DynamicResource SubBodyFontSize}" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="6">
+                                        <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right">
+                                            <TextBlock Text="{Binding PasteDelayMs}"
+                                                       FontSize="{DynamicResource SectionTitleFontSize}"
+                                                       FontWeight="{DynamicResource TitleFontWeight}"
+                                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+                                            <TextBlock Text="{Binding PasteDelayUnitDisplay}"
+                                                       FontSize="{DynamicResource SubBodyFontSize}"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                                       VerticalAlignment="Center" />
+                                        </StackPanel>
+                                        <Button x:Name="ResetPasteDelayButton"
+                                                Content="{Binding L[Settings_Hotkey_Reset]}"
+                                                Command="{Binding ResetPasteDelayDefaultCommand}"
+                                                Background="{DynamicResource SearchBackground}"
+                                                BorderBrush="{DynamicResource HairlineBrush}"
+                                                BorderThickness="1"
+                                                Foreground="{DynamicResource TextSecondaryBrush}"
+                                                CornerRadius="{DynamicResource KeyHintCornerRadius}"
+                                                Padding="10,4"
+                                                FontSize="{DynamicResource CaptionFontSize}"
+                                                HorizontalAlignment="Right"
+                                                Cursor="Hand" />
+                                    </StackPanel>
+                                </Grid>
+                                <Slider x:Name="PasteDelaySlider"
+                                        Theme="{StaticResource PillSliderTheme}"
+                                        Minimum="10" Maximum="240"
+                                        Value="{Binding PasteDelayMs, Mode=TwoWay}"
+                                        Margin="0,8,0,0" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- 6. About Panel -->
+                <ScrollViewer x:Name="PanelAbout" IsVisible="False">
+                    <StackPanel Spacing="16" Margin="0,0,0,16">
+
+                        <!-- 1. Hero Card: Brand & Logo -->
+                        <Border Background="{DynamicResource CardBackground}"
+                                BorderBrush="{DynamicResource CardBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{DynamicResource ItemCardCornerRadius}"
+                                Padding="24,20">
+                            <StackPanel Spacing="12" HorizontalAlignment="Center">
+                                <Border Background="{DynamicResource PaperBrush}"
+                                        BorderBrush="{DynamicResource CardBorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="16"
+                                        Width="64"
+                                        Height="64"
+                                        HorizontalAlignment="Center"
+                                        BoxShadow="0 4 16 #20000000">
+                                    <Image Source="avares://SlimClip.UI/Assets/app.png"
+                                           Width="52"
+                                           Height="52"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center" />
+                                </Border>
+                                <StackPanel Spacing="4" HorizontalAlignment="Center">
+                                    <TextBlock Text="SlimClip"
+                                               FontSize="{DynamicResource AppTitleFontSize}"
+                                               FontWeight="{DynamicResource AppTitleFontWeight}"
+                                               Foreground="{DynamicResource TextPrimaryBrush}"
+                                               HorizontalAlignment="Center" />
+                                    <TextBlock Text="{Binding L[Settings_About_Slogan]}"
+                                               FontSize="{DynamicResource SubBodyFontSize}"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"
+                                               HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 2. Software Version Card -->
+                        <Border Background="{DynamicResource CardBackground}"
+                                BorderBrush="{DynamicResource CardBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{DynamicResource ItemCardCornerRadius}"
+                                Padding="16,14">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" Spacing="4" VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding L[Settings_About_Version]}"
+                                                   FontSize="{DynamicResource SectionTitleFontSize}"
+                                                   FontWeight="{DynamicResource BodyFontWeight}"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}" />
+                                        <Border Background="{DynamicResource ActiveChipBackground}"
+                                                CornerRadius="4"
+                                                Padding="6,1"
+                                                VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding AppVersion}"
+                                                       FontSize="{DynamicResource CaptionFontSize}"
+                                                       FontWeight="{DynamicResource TitleFontWeight}"
+                                                       Foreground="{DynamicResource ActiveChipForeground}" />
+                                        </Border>
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding PlatformDisplay}"
+                                               FontSize="{DynamicResource SubBodyFontSize}"
+                                               Foreground="{DynamicResource TextSecondaryBrush}" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <Button Content="{Binding CopyVersionButtonText}"
+                                            Command="{Binding CopyVersionInfoCommand}"
+                                            Background="{DynamicResource SearchBackground}"
+                                            BorderBrush="{DynamicResource SearchBorderBrush}"
+                                            BorderThickness="1"
+                                            Foreground="{DynamicResource TextPrimaryBrush}"
+                                            CornerRadius="{DynamicResource FilterChipCornerRadius}"
+                                            Padding="12,6"
+                                            FontSize="{DynamicResource SubBodyFontSize}"
+                                            Cursor="Hand" />
+                                    <Button Content="{Binding L[Settings_About_CheckUpdate]}"
+                                            Command="{Binding CheckUpdatesCommand}"
+                                            Background="{DynamicResource SearchBackground}"
+                                            BorderBrush="{DynamicResource SearchBorderBrush}"
+                                            BorderThickness="1"
+                                            Foreground="{DynamicResource TextPrimaryBrush}"
+                                            CornerRadius="{DynamicResource FilterChipCornerRadius}"
+                                            Padding="12,6"
+                                            FontSize="{DynamicResource SubBodyFontSize}"
+                                            Cursor="Hand" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- 3. Resources & Support Card -->
+                        <Border Background="{DynamicResource CardBackground}"
+                                BorderBrush="{DynamicResource CardBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{DynamicResource ItemCardCornerRadius}"
+                                Padding="16,14">
+                            <StackPanel Spacing="14">
+                                <TextBlock Text="{Binding L[Settings_About_Resources]}"
+                                           FontSize="{DynamicResource SectionTitleFontSize}"
+                                           FontWeight="{DynamicResource BodyFontWeight}"
+                                           Foreground="{DynamicResource TextPrimaryBrush}" />
+
+                                <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                                    <StackPanel Grid.Column="0" Spacing="2">
+                                        <TextBlock Text="{Binding L[Settings_About_Project]}"
+                                                   FontSize="{DynamicResource BodyFontSize}"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}" />
+                                        <TextBlock Text="{Binding L[Settings_About_Home_Desc]}"
+                                                   FontSize="{DynamicResource SubBodyFontSize}"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    </StackPanel>
+                                    <Button Grid.Column="1"
+                                            Content="{Binding L[Settings_About_Home]}"
+                                            Command="{Binding OpenProjectUrlCommand}"
+                                            Background="{DynamicResource SearchBackground}"
+                                            BorderBrush="{DynamicResource SearchBorderBrush}"
+                                            BorderThickness="1"
+                                            Foreground="{DynamicResource TextPrimaryBrush}"
+                                            CornerRadius="{DynamicResource FilterChipCornerRadius}"
+                                            Padding="12,6"
+                                            FontSize="{DynamicResource SubBodyFontSize}"
+                                            Cursor="Hand" />
+                                </Grid>
+
+                                <Rectangle Height="1" Fill="{DynamicResource DividerBrush}" />
+
+                                <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                                    <StackPanel Grid.Column="0" Spacing="2">
+                                        <TextBlock Text="{Binding L[Settings_About_Issues]}"
+                                                   FontSize="{DynamicResource BodyFontSize}"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}" />
+                                        <TextBlock Text="{Binding L[Settings_About_Feedback_Desc]}"
+                                                   FontSize="{DynamicResource SubBodyFontSize}"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    </StackPanel>
+                                    <Button Grid.Column="1"
+                                            Content="{Binding L[Settings_About_Feedback]}"
+                                            Command="{Binding OpenIssuesCommand}"
+                                            Background="{DynamicResource SearchBackground}"
+                                            BorderBrush="{DynamicResource SearchBorderBrush}"
+                                            BorderThickness="1"
+                                            Foreground="{DynamicResource TextPrimaryBrush}"
+                                            CornerRadius="{DynamicResource FilterChipCornerRadius}"
+                                            Padding="12,6"
+                                            FontSize="{DynamicResource SubBodyFontSize}"
+                                            Cursor="Hand" />
+                                </Grid>
+
+                                <Rectangle Height="1" Fill="{DynamicResource DividerBrush}" />
+
+                                <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                                    <StackPanel Grid.Column="0" Spacing="2">
+                                        <TextBlock Text="{Binding L[Settings_About_DataDir]}"
+                                                   FontSize="{DynamicResource BodyFontSize}"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}" />
+                                        <TextBlock Text="{Binding L[Settings_About_Directory_Desc]}"
+                                                   FontSize="{DynamicResource SubBodyFontSize}"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    </StackPanel>
+                                    <Button Grid.Column="1"
+                                            Content="{Binding L[Settings_About_Directory]}"
+                                            Command="{Binding OpenDataDirectoryCommand}"
+                                            Background="{DynamicResource SearchBackground}"
+                                            BorderBrush="{DynamicResource SearchBorderBrush}"
+                                            BorderThickness="1"
+                                            Foreground="{DynamicResource TextPrimaryBrush}"
+                                            CornerRadius="{DynamicResource FilterChipCornerRadius}"
+                                            Padding="12,6"
+                                            FontSize="{DynamicResource SubBodyFontSize}"
+                                            Cursor="Hand" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 4. License & Copyright Card -->
+                        <Border Background="{DynamicResource CardBackground}"
+                                BorderBrush="{DynamicResource CardBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{DynamicResource ItemCardCornerRadius}"
+                                Padding="16,14">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" Spacing="4" VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                        <TextBlock Text="CC BY-NC-SA 4.0"
+                                                   FontSize="{DynamicResource BodyFontSize}"
+                                                   FontWeight="{DynamicResource BodyFontWeight}"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}" />
+                                        <Border Background="{DynamicResource SearchBackground}"
+                                                BorderBrush="{DynamicResource HairlineBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="4"
+                                                Padding="6,1"
+                                                VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding L[Settings_About_License_Tag]}"
+                                                       FontSize="{DynamicResource CaptionFontSize}"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}" />
+                                        </Border>
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding L[Settings_About_Copyright]}"
+                                               FontSize="{DynamicResource SubBodyFontSize}"
+                                               Foreground="{DynamicResource TextSecondaryBrush}" />
+                                </StackPanel>
+
+                                <Button Grid.Column="1"
+                                        Content="{Binding L[Settings_About_License]}"
+                                        Command="{Binding OpenLicenseCommand}"
+                                        Background="{DynamicResource SearchBackground}"
+                                        BorderBrush="{DynamicResource SearchBorderBrush}"
+                                        BorderThickness="1"
+                                        Foreground="{DynamicResource TextPrimaryBrush}"
+                                        CornerRadius="{DynamicResource FilterChipCornerRadius}"
+                                        Padding="12,6"
+                                        FontSize="{DynamicResource SubBodyFontSize}"
+                                        Cursor="Hand" />
+                            </Grid>
+                        </Border>
+
+                    </StackPanel>
+                </ScrollViewer>
+
+            </Grid>
+
+        </Grid>
+    </Border>
+
+        <!-- Clear Data Overlay: Confirmation, Spinner Progress, and Success Checkmark -->
+        <Border x:Name="ClearDataOverlay"
+                IsVisible="False"
+                Background="#D8000000"
+                CornerRadius="{DynamicResource WindowCornerRadius}"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch">
+            <Border Background="{DynamicResource PaperBrush}"
+                    BorderBrush="{DynamicResource WindowBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="12"
+                    Padding="24,20"
+                    Width="340"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    BoxShadow="0 16 48 #80000000">
+                <Panel>
+                    <!-- 1. Confirmation Card -->
+                    <StackPanel x:Name="ClearConfirmPanel" Spacing="16" IsVisible="True">
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="{Binding L[Settings_Data_Clear_Title]}"
+                                       FontSize="{DynamicResource SectionTitleFontSize}"
+                                       FontWeight="{DynamicResource TitleFontWeight}"
+                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+                            <TextBlock Text="{Binding L[Settings_Data_Clear_Message]}"
+                                       FontSize="{DynamicResource SubBodyFontSize}"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                       TextWrapping="Wrap"
+                                       LineHeight="18" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                            <Button Content="{Binding L[Dialog_Cancel]}"
+                                    Click="OnCancelClearClicked"
+                                    Background="{DynamicResource SearchBackground}"
+                                    BorderBrush="{DynamicResource HairlineBrush}"
+                                    BorderThickness="1"
+                                    Foreground="{DynamicResource TextPrimaryBrush}"
+                                    CornerRadius="6"
+                                    Padding="14,6"
+                                    Cursor="Hand" />
+                            <Button Content="{Binding L[Settings_Data_Clear_ConfirmBtn]}"
+                                    Click="OnConfirmClearClicked"
+                                    Background="{DynamicResource DestructiveBrush}"
+                                    Foreground="White"
+                                    BorderThickness="0"
+                                    CornerRadius="6"
+                                    Padding="14,6"
+                                    FontWeight="{DynamicResource BodyFontWeight}"
+                                    Cursor="Hand" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- 2. Spinner Progress Card -->
+                    <StackPanel x:Name="ClearProgressPanel" Spacing="16" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="False" Margin="0,10">
+                        <Arc x:Name="ClearSpinnerArc"
+                             Width="40"
+                             Height="40"
+                             Stroke="{DynamicResource ActiveChipBackground}"
+                             StrokeThickness="3.5"
+                             StrokeJoin="Round"
+                             StrokeLineCap="Round"
+                             StartAngle="0"
+                             SweepAngle="280"
+                             HorizontalAlignment="Center"
+                             RenderTransformOrigin="50%,50%">
+                            <Arc.RenderTransform>
+                                <RotateTransform Angle="0" />
+                            </Arc.RenderTransform>
+                        </Arc>
+                        <TextBlock Text="{Binding L[Settings_Data_Clear_Processing]}"
+                                   FontSize="{DynamicResource BodyFontSize}"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   HorizontalAlignment="Center" />
+                    </StackPanel>
+
+                    <!-- 3. Success Checkmark Card -->
+                    <StackPanel x:Name="ClearSuccessPanel" Spacing="14" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="False" Margin="0,10">
+                        <Border Width="44"
+                                Height="44"
+                                CornerRadius="22"
+                                Background="{DynamicResource ActiveChipBackground}"
+                                HorizontalAlignment="Center">
+                            <controls:AppIcon Kind="Check"
+                                              Size="22"
+                                              Foreground="{DynamicResource ActiveChipForeground}"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <TextBlock Text="{Binding L[Settings_Data_Clear_Success]}"
+                                   FontSize="{DynamicResource SectionTitleFontSize}"
+                                   FontWeight="{DynamicResource TitleFontWeight}"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                   HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Panel>
+            </Border>
+        </Border>
+    </Panel>
+</Window>

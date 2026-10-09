@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SlimClip.Core/SlimClip.Core.csproj" />
+    <Project Path="src/SlimClip.Desktop/SlimClip.Desktop.csproj" />
+    <Project Path="src/SlimClip.Platform.MacOS/SlimClip.Platform.MacOS.csproj" />
+    <Project Path="src/SlimClip.Platform.Windows/SlimClip.Platform.Windows.csproj" />
+    <Project Path="src/SlimClip.UI/SlimClip.UI.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SlimClip.Tests/SlimClip.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,58 @@
+## [Visual Studio / .NET Build Artifacts]
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+## [Visual Studio Core]
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+*.userprefs
+
+## [JetBrains Rider & ReSharper]
+.idea/
+*.DotSettings.user
+
+## [Visual Studio Code]
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+## [OS Generated Files]
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+[Dd]esktop.ini
+Library/
+
+## [Application Runtime Data]
+*.db
+*.db-wal
+*.db-shm
+images/
+slimclip.db
+slimclip.db-wal
+slimclip.db-shm
+
+## [Publish & Releases]
+releases/
+.publish-staging/
+HarmonyOS Sans/
+
+## [Crash & Diagnostics]
+*.crash
+*.dmp
+*.stackdump
+
+## [Local AI & Developer Scratch Area]
+.scratch/
+

@@ -1,0 +1,58 @@
+name: Bug 报告 (Bug Report)
+description: 提交 SlimClip 运行中的异常、崩溃或功能失效
+title: "fix: [简短描述问题]"
+labels: ["needs-triage", "bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈问题！在提交之前，请先确认所用版本为最新版，且尚未有类似 Issue 正在处理。
+  - type: dropdown
+    id: os
+    attributes:
+      label: 操作系统与架构
+      options:
+        - "Windows 11 (x64)"
+        - "Windows 10 (x64)"
+        - "macOS Sonoma 14+ (Apple Silicon)"
+        - "macOS Sequoia 15+ (Apple Silicon)"
+        - "其他"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: SlimClip 版本号
+      placeholder: "例如: 1.0.2"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+      description: 清晰描述遇到的 Bug 以及异常行为。
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 请详细列出复现此问题的操作路径。
+      placeholder: |
+        1. 复制...
+        2. 按下唤醒热键...
+        3. 点击...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期行为
+      description: 正常情况下应该发生什么。
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志或截图
+      description: 如有异常堆栈、日志输出或截图，请粘贴在此处。
