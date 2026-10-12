@@ -41,6 +41,7 @@ public partial class App : Application
     private TrayIcon? _trayIcon;
     private NativeMenuItem? _showMenuItem;
     private NativeMenuItem? _settingsMenuItem;
+    private NativeMenuItem? _checkUpdateMenuItem;
     private NativeMenuItem? _exitMenuItem;
 
     public override void Initialize()
@@ -241,14 +242,11 @@ public partial class App : Application
 
         _clipboardPanel.Position = new PixelPoint(x, y);
         _clipboardPanel.ShowPanel();
-
-        if (_clipboardPanel.TryGetPlatformHandle()?.Handle is { } hwnd && hwnd != IntPtr.Zero)
-        {
-            _windowActivationService.ActivateWindow(hwnd);
-        }
     }
 
-    public void OpenSettingsWindow()
+    public void OpenSettingsWindow() => OpenSettingsWindow(null);
+
+    public void OpenSettingsWindow(string? tab)
     {
         if (_settingsWindow == null)
         {
@@ -260,6 +258,11 @@ public partial class App : Application
                 _settingsWindow.Icon = appIcon;
             }
             _settingsWindow.Closed += (s, e) => _settingsWindow = null;
+        }
+
+        if (!string.IsNullOrEmpty(tab))
+        {
+            _settingsWindow.SelectTab(tab);
         }
 
         _settingsWindow.Show();
@@ -362,6 +365,17 @@ public partial class App : Application
         _settingsMenuItem.Click += (s, e) => OpenSettingsWindow();
         menu.Add(_settingsMenuItem);
 
+        _checkUpdateMenuItem = new NativeMenuItem(_localizationService["Tray_CheckUpdate"]);
+        _checkUpdateMenuItem.Click += (s, e) =>
+        {
+            OpenSettingsWindow("About");
+            if (_settingsViewModel.CheckUpdatesCommand.CanExecute(null))
+            {
+                _settingsViewModel.CheckUpdatesCommand.Execute(null);
+            }
+        };
+        menu.Add(_checkUpdateMenuItem);
+
         menu.Add(new NativeMenuItemSeparator());
 
         _exitMenuItem = new NativeMenuItem(_localizationService["Tray_Exit"]);
@@ -399,6 +413,10 @@ public partial class App : Application
         if (_settingsMenuItem != null)
         {
             _settingsMenuItem.Header = _localizationService["Tray_Settings"];
+        }
+        if (_checkUpdateMenuItem != null)
+        {
+            _checkUpdateMenuItem.Header = _localizationService["Tray_CheckUpdate"];
         }
         if (_exitMenuItem != null)
         {

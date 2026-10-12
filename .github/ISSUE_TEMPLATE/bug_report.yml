@@ -1,58 +1,57 @@
-name: Bug 报告 (Bug Report)
-description: 提交 SlimClip 运行中的异常、崩溃或功能失效
-title: "fix: [简短描述问题]"
-labels: ["needs-triage", "bug"]
+name: 缺陷反馈 (Bug report)
+description: 提交软件运行中的缺陷、崩溃或异常行为
+title: "[Bug]: "
+labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        感谢反馈问题！在提交之前，请先确认所用版本为最新版，且尚未有类似 Issue 正在处理。
+        感谢您反馈缺陷！请在提交前确保已查阅 [CHANGELOG.md](../CHANGELOG.md) 并测试过最新版本。
+
   - type: dropdown
     id: os
     attributes:
-      label: 操作系统与架构
+      label: 运行操作系统 (Operating System)
+      description: 请选择出现该问题的系统平台与版本
       options:
-        - "Windows 11 (x64)"
-        - "Windows 10 (x64)"
-        - "macOS Sonoma 14+ (Apple Silicon)"
-        - "macOS Sequoia 15+ (Apple Silicon)"
-        - "其他"
+        - Windows 11
+        - Windows 10
+        - macOS (Apple Silicon M系列)
+        - 其他
     validations:
       required: true
+
   - type: input
     id: version
     attributes:
-      label: SlimClip 版本号
-      placeholder: "例如: 1.0.2"
+      label: SlimClip 软件版本
+      description: 如 v1.0.3
+      placeholder: v1.0.3
     validations:
       required: true
+
   - type: textarea
     id: description
     attributes:
-      label: 问题描述
-      description: 清晰描述遇到的 Bug 以及异常行为。
+      label: 缺陷现象描述 (Bug Description)
+      description: 请清晰描述发生的具体异常或预期外的行为
     validations:
       required: true
+
   - type: textarea
-    id: steps
+    id: reproduction
     attributes:
-      label: 复现步骤
-      description: 请详细列出复现此问题的操作路径。
+      label: 复现步骤 (Steps to Reproduce)
+      description: 请提供逐步复现的操作流程
       placeholder: |
-        1. 复制...
-        2. 按下唤醒热键...
-        3. 点击...
+        1. 按下快捷键呼出面板...
+        2. 复制一段包含...的内容
+        3. 发生异常...
     validations:
       required: true
+
   - type: textarea
-    id: expected
+    id: context
     attributes:
-      label: 预期行为
-      description: 正常情况下应该发生什么。
-    validations:
-      required: true
-  - type: textarea
-    id: logs
-    attributes:
-      label: 日志或截图
-      description: 如有异常堆栈、日志输出或截图，请粘贴在此处。
+      label: 补充截图或日志 (Screenshots or Logs)
+      description: 可在此处拖入屏幕截图或控制台报错

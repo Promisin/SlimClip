@@ -59,16 +59,49 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private string _hotkeyDisplay;
 
+    private readonly IUpdateService _updateService;
+
+    // --- Update Flow State ---
+    [ObservableProperty]
+    private bool _isCheckingUpdate;
+
+    [ObservableProperty]
+    private string _checkUpdateButtonText;
+
+    [ObservableProperty]
+    private bool _hasNewVersion;
+
+    [ObservableProperty]
+    private UpdateInfo? _availableUpdate;
+
+    [ObservableProperty]
+    private bool _isDownloadingUpdate;
+
+    [ObservableProperty]
+    private double _downloadProgress;
+
+    [ObservableProperty]
+    private bool _isUpdateDownloaded;
+
+    [ObservableProperty]
+    private bool _isDownloadFailed;
+
+    private string? _downloadedInstallerPath;
+
     public SettingsViewModel(
         ISettingsService settingsService,
         IClipboardHistory history,
         IHotkeyService? hotkeyService = null,
-        ILocalizationService? localizationService = null)
+        ILocalizationService? localizationService = null,
+        IUpdateService? updateService = null)
     {
         _settingsService = settingsService;
         _history = history;
         _hotkeyService = hotkeyService;
+        _updateService = updateService ?? new UpdateService();
         _localizationService = localizationService ?? new LocalizationService(_settingsService.Settings.Language);
+
+        _checkUpdateButtonText = _localizationService["Settings_About_CheckUpdate"];
 
         _selectedLanguage = _localizationService.SupportedLanguages.FirstOrDefault(l => l.Code == _localizationService.CurrentLanguage)
                             ?? _localizationService.SupportedLanguages[0];
@@ -82,6 +115,10 @@ public partial class SettingsViewModel : ObservableObject
             OnPropertyChanged(nameof(CleanDaysUnitDisplay));
             OnPropertyChanged(nameof(PasteDelayUnitDisplay));
             OnPropertyChanged(nameof(CopyVersionButtonText));
+            if (!IsCheckingUpdate && !HasNewVersion)
+            {
+                CheckUpdateButtonText = _localizationService["Settings_About_CheckUpdate"];
+            }
         };
 
         _hotkeyDisplay = _settingsService.Settings.Hotkey.DisplayString;
@@ -322,18 +359,106 @@ public partial class SettingsViewModel : ObservableObject
     public const string ReleasesUrl = "https://github.com/Promisin/SlimClip/releases";
     public const string IssuesUrl = "https://github.com/Promisin/SlimClip/issues";
     public const string LicenseUrl = "https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans";
+    public const string AcknowledgementsUrl = "https://github.com/Promisin/SlimClip/blob/main/ACKNOWLEDGEMENTS.md";
 
     [RelayCommand]
     public void OpenProjectUrl() => PlatformLauncher.OpenUrl(ProjectUrl);
 
     [RelayCommand]
-    public void CheckUpdates() => PlatformLauncher.OpenUrl(ReleasesUrl);
+    public async Task CheckUpdatesAsync()
+    {
+        if (IsCheckingUpdate || IsDownloadingUpdate) return;
+
+        IsCheckingUpdate = true;
+        CheckUpdateButtonText = _localizationService["Settings_About_Update_Checking"];
+
+        var result = await _updateService.CheckForUpdatesAsync(AppVersion);
+        IsCheckingUpdate = false;
+
+        if (result.HasUpdate && result.Update != null)
+        {
+            AvailableUpdate = result.Update;
+            HasNewVersion = true;
+            CheckUpdateButtonText = _localizationService["Settings_About_Update_Found"];
+        }
+        else if (!string.IsNullOrEmpty(result.ErrorMessage))
+        {
+            CheckUpdateButtonText = _localizationService["Settings_About_Update_Failed"];
+            await Task.Delay(3000);
+            CheckUpdateButtonText = _localizationService["Settings_About_CheckUpdate"];
+        }
+        else
+        {
+            HasNewVersion = false;
+            CheckUpdateButtonText = _localizationService["Settings_About_Update_Latest"];
+            await Task.Delay(2500);
+            CheckUpdateButtonText = _localizationService["Settings_About_CheckUpdate"];
+        }
+    }
+
+    [RelayCommand]
+    public async Task StartDownloadUpdateAsync()
+    {
+        if (AvailableUpdate == null || IsDownloadingUpdate) return;
+
+        IsDownloadingUpdate = true;
+        DownloadProgress = 0.0;
+        IsUpdateDownloaded = false;
+        IsDownloadFailed = false;
+
+        var progress = new Progress<double>(p =>
+        {
+            DownloadProgress = p;
+        });
+
+        try
+        {
+            var path = await _updateService.DownloadUpdateAsync(AvailableUpdate, progress);
+            _downloadedInstallerPath = path;
+            IsUpdateDownloaded = true;
+        }
+        catch
+        {
+            // 下载失败则允许重试
+            IsUpdateDownloaded = false;
+            IsDownloadFailed = true;
+        }
+        finally
+        {
+            IsDownloadingUpdate = false;
+        }
+    }
+
+    [RelayCommand]
+    public void ApplyUpdate()
+    {
+        if (!string.IsNullOrEmpty(_downloadedInstallerPath))
+        {
+            _updateService.LaunchInstallerAndExit(_downloadedInstallerPath);
+        }
+    }
+
+    [RelayCommand]
+    public void OpenManualDownload()
+    {
+        if (AvailableUpdate != null)
+        {
+            PlatformLauncher.OpenUrl(AvailableUpdate.HtmlUrl);
+        }
+        else
+        {
+            PlatformLauncher.OpenUrl(ReleasesUrl);
+        }
+    }
 
     [RelayCommand]
     public void OpenIssues() => PlatformLauncher.OpenUrl(IssuesUrl);
 
     [RelayCommand]
     public void OpenLicense() => PlatformLauncher.OpenUrl(LicenseUrl);
+
+    [RelayCommand]
+    public void OpenAcknowledgements() => PlatformLauncher.OpenUrl(AcknowledgementsUrl);
 
     [RelayCommand]
     public void OpenDataDirectory()
@@ -346,7 +471,7 @@ public partial class SettingsViewModel : ObservableObject
     {
         var asm = System.Reflection.Assembly.GetEntryAssembly() ?? typeof(SettingsViewModel).Assembly;
         var ver = asm.GetName().Version;
-        return ver != null ? $"v{ver.Major}.{ver.Minor}.{ver.Build}" : "v1.0.2";
+        return ver != null ? $"v{ver.Major}.{ver.Minor}.{ver.Build}" : "v1.0.3";
     }
 
     private static string GetPlatformDisplay()

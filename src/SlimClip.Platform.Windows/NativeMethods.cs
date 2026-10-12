@@ -262,6 +262,7 @@ internal static class NativeMethods
     public const uint INPUT_HARDWARE = 2;
     public const uint KEYEVENTF_KEYUP = 0x0002;
     public const uint KEYEVENTF_EXTENDEDKEY = 0x0001;
+    public const byte VK_CONTROL = 0x11;
 
     [DllImport("user32.dll", SetLastError = true)]
     public static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);

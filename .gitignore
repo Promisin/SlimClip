@@ -52,6 +52,7 @@ HarmonyOS Sans/
 *.crash
 *.dmp
 *.stackdump
+*.log
 
 ## [Local AI & Developer Scratch Area]
 .scratch/

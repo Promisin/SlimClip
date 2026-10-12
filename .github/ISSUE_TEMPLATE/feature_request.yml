@@ -1,28 +1,31 @@
-name: 功能建议 (Feature Request)
-description: 为 SlimClip 提出新功能建议或交互调优想法
-title: "feat: [简短描述功能建议]"
-labels: ["needs-triage", "enhancement"]
+name: 功能建议 (Feature request)
+description: 为 SlimClip 提出新功能设计、体验优化或交互建议
+title: "[Feat]: "
+labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
       value: |
-        感谢为 SlimClip 提出宝贵建议！我们重视跨平台一致性与轻量流畅体验。
+        感谢您的建议！SlimClip 的核心哲学是**“极简、流畅、纯本地运行”**。我们高度欢迎契合该哲学的轻量化提案。
+
   - type: textarea
     id: problem
     attributes:
-      label: 解决的痛点 / 场景背景
-      description: 当前遇到了什么不便，或者在什么使用场景下需要该功能？
+      label: 您遇到了什么问题或痛点？
+      description: 现有功能在哪些使用场景下不够便利或存在局限？
     validations:
       required: true
+
   - type: textarea
-    id: proposal
+    id: solution
     attributes:
-      label: 期望的解决方案 / 功能设想
-      description: 您希望 SlimClip 具备什么样的交互或行为？
+      label: 您期望的解决方案或新功能行为
+      description: 描述清晰的交互预期与呈现效果
     validations:
       required: true
+
   - type: textarea
     id: alternatives
     attributes:
-      label: 考虑过的替代方案
-      description: 是否有任何替代的变通方案或其它软件的参考实现？
+      label: 您考虑过的其他替代方案
+      description: 是否有其他折中或现成的处理方式？

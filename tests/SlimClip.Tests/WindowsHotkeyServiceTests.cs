@@ -50,8 +50,8 @@ public class WindowsHotkeyServiceTests
 
         // 4. Physical Win Up (User releases Win key)
         var resWinUp = service.ProcessKeyEvent(WM_KEYUP, VK_LWIN, 0, isInjected: false);
-        Assert.Equal((IntPtr)1, resWinUp); // Must swallow Win keyup so Windows Shell never receives orphan Win release
-        Assert.Equal(2, neutralizedCount); // Must neutralize Win key again upon release to suppress Start Menu
+        Assert.Equal(IntPtr.Zero, resWinUp); // Must pass Win keyup to OS so system knows Win key was released!
+        Assert.Equal(1, neutralizedCount); // Neutralized once on chord trigger
         Assert.False(service.IsWinKeySuppressionActive, "Win key suppression must be reset after Win keyup");
     }
 
@@ -107,8 +107,8 @@ public class WindowsHotkeyServiceTests
 
         // 3. User releases Win BEFORE releasing V (rolling fingers)
         var resWinUp = service.ProcessKeyEvent(WM_KEYUP, VK_LWIN, 0, isInjected: false);
-        Assert.Equal((IntPtr)1, resWinUp); // Must swallow Win keyup even if released before V!
-        Assert.Equal(2, neutralizedCount); // Start menu must be suppressed on release!
+        Assert.Equal(IntPtr.Zero, resWinUp); // Must pass Win keyup to OS even if released before V!
+        Assert.Equal(1, neutralizedCount); // Neutralized on trigger
         Assert.False(service.IsWinKeySuppressionActive);
 
         // 4. User releases V
@@ -156,6 +156,41 @@ public class WindowsHotkeyServiceTests
 
         // 6. Win Up
         var resWinUp = service.ProcessKeyEvent(WM_KEYUP, VK_LWIN, 0, isInjected: false);
-        Assert.Equal((IntPtr)1, resWinUp);
+        Assert.Equal(IntPtr.Zero, resWinUp);
+    }
+
+    [Fact]
+    public void WinV_AfterRelease_SubsequentCtrlV_DoesNotRetainWinModifier()
+    {
+        using var service = new WindowsHotkeyService();
+        var winVFired = 0;
+
+        service.HotkeyPressed += (s, e) => winVFired++;
+
+        service.Register(new HotkeyConfig
+        {
+            Modifiers = KeyModifiers.WindowsOrCommand,
+            KeyCode = (int)VK_V,
+            DisplayString = "Win + V",
+            IsEnabled = true
+        });
+
+        // 1. Trigger Win + V
+        service.ProcessKeyEvent(WM_KEYDOWN, VK_LWIN, 0, isInjected: false);
+        service.ProcessKeyEvent(WM_KEYDOWN, VK_V, 0, isInjected: false);
+        Assert.Equal(1, winVFired);
+
+        // 2. Release V then Win
+        service.ProcessKeyEvent(WM_KEYUP, VK_V, 0, isInjected: false);
+        service.ProcessKeyEvent(WM_KEYUP, VK_LWIN, 0, isInjected: false);
+
+        // 3. User now presses Ctrl + V
+        const uint VK_CONTROL = 0x11;
+        service.ProcessKeyEvent(WM_KEYDOWN, VK_CONTROL, 0, isInjected: false);
+        var resV = service.ProcessKeyEvent(WM_KEYDOWN, VK_V, 0, isInjected: false);
+
+        // resV must NOT match Win+V hotkey (should be passed to app as standard paste)
+        Assert.Equal(IntPtr.Zero, resV);
+        Assert.Equal(1, winVFired); // Must NOT fire Win+V again!
     }
 }

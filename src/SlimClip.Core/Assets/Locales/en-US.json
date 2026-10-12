@@ -34,6 +34,7 @@
 
   "Tray_ShowHistory": "Show Clipboard History",
   "Tray_Settings": "Settings",
+  "Tray_CheckUpdate": "Check for Updates",
   "Tray_Exit": "Exit",
   "Tray_ToolTip": "SlimClip - Clipboard History",
 
@@ -115,6 +116,15 @@
   "Settings_About_CopyInfo": "Copy Info",
   "Settings_About_Copied": "Copied",
   "Settings_About_CheckUpdate": "Check Updates",
+  "Settings_About_Update_Checking": "Checking...",
+  "Settings_About_Update_Latest": "Up to Date",
+  "Settings_About_Update_Found": "New Version Found",
+  "Settings_About_Update_Download": "Update Now",
+  "Settings_About_Update_Downloading": "Downloading...",
+  "Settings_About_Update_Restart": "Restart & Finish Update",
+  "Settings_About_Update_Failed": "Check failed, click to retry",
+  "Settings_About_Update_DownloadFailed": "Download failed, click to retry or download manually",
+  "Settings_About_Update_Manual": "Download from Web",
   "Settings_About_Resources": "Resources & Support",
   "Settings_About_Project": "Homepage",
   "Settings_About_Home": "Visit",
@@ -127,6 +137,8 @@
   "Settings_About_Directory_Desc": "Locate clipboard history and image cache directory",
   "Settings_About_License": "View License",
   "Settings_About_License_Tag": "Non-Commercial Open Source",
+  "Settings_About_Acknowledgements": "Acknowledgements",
+  "Settings_About_Acknowledgements_Desc": "View third-party open-source components and font licenses",
   "Settings_About_Copyright": "Copyright © 2026 Promisin · All rights reserved",
 
   "Settings_Data_Clear_Title": "Confirm clear all data?",

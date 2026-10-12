@@ -1219,8 +1219,9 @@
                                             Padding="12,6"
                                             FontSize="{DynamicResource SubBodyFontSize}"
                                             Cursor="Hand" />
-                                    <Button Content="{Binding L[Settings_About_CheckUpdate]}"
+                                    <Button Content="{Binding CheckUpdateButtonText}"
                                             Command="{Binding CheckUpdatesCommand}"
+                                            IsEnabled="{Binding !IsCheckingUpdate}"
                                             Background="{DynamicResource SearchBackground}"
                                             BorderBrush="{DynamicResource SearchBorderBrush}"
                                             BorderThickness="1"
@@ -1231,6 +1232,108 @@
                                             Cursor="Hand" />
                                 </StackPanel>
                             </Grid>
+                        </Border>
+
+                        <!-- 2.5 New Version Available Card (Expandable) -->
+                        <Border IsVisible="{Binding HasNewVersion}"
+                                Background="{DynamicResource CardBackground}"
+                                BorderBrush="{DynamicResource ActiveChipBackground}"
+                                BorderThickness="1"
+                                CornerRadius="{DynamicResource ItemCardCornerRadius}"
+                                Padding="16,14">
+                            <StackPanel Spacing="12">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel Grid.Column="0" Spacing="4" VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding L[Settings_About_Update_Found]}"
+                                                       FontSize="{DynamicResource SectionTitleFontSize}"
+                                                       FontWeight="{DynamicResource BodyFontWeight}"
+                                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+                                            <Border Background="{DynamicResource ActiveChipBackground}"
+                                                    CornerRadius="4"
+                                                    Padding="6,1"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding AvailableUpdate.TagName}"
+                                                           FontSize="{DynamicResource CaptionFontSize}"
+                                                           FontWeight="{DynamicResource TitleFontWeight}"
+                                                           Foreground="{DynamicResource ActiveChipForeground}" />
+                                            </Border>
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding AvailableUpdate.ReleaseNotes}"
+                                                   FontSize="{DynamicResource SubBodyFontSize}"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                                   TextWrapping="Wrap"
+                                                   MaxLines="3"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding L[Settings_About_Update_DownloadFailed]}"
+                                                   IsVisible="{Binding IsDownloadFailed}"
+                                                   FontSize="{DynamicResource CaptionFontSize}"
+                                                   Foreground="{DynamicResource DestructiveBrush}" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                        <!-- 前往网页下载 (备用) -->
+                                        <Button Content="{Binding L[Settings_About_Update_Manual]}"
+                                                Command="{Binding OpenManualDownloadCommand}"
+                                                Background="{DynamicResource SearchBackground}"
+                                                BorderBrush="{DynamicResource SearchBorderBrush}"
+                                                BorderThickness="1"
+                                                Foreground="{DynamicResource TextPrimaryBrush}"
+                                                CornerRadius="{DynamicResource FilterChipCornerRadius}"
+                                                Padding="12,6"
+                                                FontSize="{DynamicResource SubBodyFontSize}"
+                                                Cursor="Hand" />
+
+                                        <!-- 立即更新 (下载前) -->
+                                        <Button Content="{Binding L[Settings_About_Update_Download]}"
+                                                Command="{Binding StartDownloadUpdateCommand}"
+                                                IsVisible="{Binding !IsUpdateDownloaded}"
+                                                IsEnabled="{Binding !IsDownloadingUpdate}"
+                                                Background="{DynamicResource ActiveChipBackground}"
+                                                BorderThickness="0"
+                                                Foreground="{DynamicResource ActiveChipForeground}"
+                                                CornerRadius="{DynamicResource FilterChipCornerRadius}"
+                                                Padding="14,6"
+                                                FontSize="{DynamicResource SubBodyFontSize}"
+                                                FontWeight="{DynamicResource BodyFontWeight}"
+                                                Cursor="Hand" />
+
+                                        <!-- 重启并完成更新 (下载后) -->
+                                        <Button Content="{Binding L[Settings_About_Update_Restart]}"
+                                                Command="{Binding ApplyUpdateCommand}"
+                                                IsVisible="{Binding IsUpdateDownloaded}"
+                                                Background="{DynamicResource ActiveChipBackground}"
+                                                BorderThickness="0"
+                                                Foreground="{DynamicResource ActiveChipForeground}"
+                                                CornerRadius="{DynamicResource FilterChipCornerRadius}"
+                                                Padding="14,6"
+                                                FontSize="{DynamicResource SubBodyFontSize}"
+                                                FontWeight="{DynamicResource BodyFontWeight}"
+                                                Cursor="Hand" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- 下载进度条 -->
+                                <StackPanel Spacing="6" IsVisible="{Binding IsDownloadingUpdate}">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{Binding L[Settings_About_Update_Downloading]}"
+                                                   FontSize="{DynamicResource CaptionFontSize}"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}" />
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{Binding DownloadProgress, StringFormat='{}{0:0}%'}"
+                                                   FontSize="{DynamicResource CaptionFontSize}"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    </Grid>
+                                    <ProgressBar Minimum="0"
+                                                 Maximum="100"
+                                                 Value="{Binding DownloadProgress}"
+                                                 Height="4"
+                                                 CornerRadius="2"
+                                                 Background="{DynamicResource SearchBackground}"
+                                                 Foreground="{DynamicResource ActiveChipBackground}" />
+                                </StackPanel>
+                            </StackPanel>
                         </Border>
 
                         <!-- 3. Resources & Support Card -->
@@ -1346,17 +1449,28 @@
                                                Foreground="{DynamicResource TextSecondaryBrush}" />
                                 </StackPanel>
 
-                                <Button Grid.Column="1"
-                                        Content="{Binding L[Settings_About_License]}"
-                                        Command="{Binding OpenLicenseCommand}"
-                                        Background="{DynamicResource SearchBackground}"
-                                        BorderBrush="{DynamicResource SearchBorderBrush}"
-                                        BorderThickness="1"
-                                        Foreground="{DynamicResource TextPrimaryBrush}"
-                                        CornerRadius="{DynamicResource FilterChipCornerRadius}"
-                                        Padding="12,6"
-                                        FontSize="{DynamicResource SubBodyFontSize}"
-                                        Cursor="Hand" />
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <Button Content="{Binding L[Settings_About_Acknowledgements]}"
+                                            Command="{Binding OpenAcknowledgementsCommand}"
+                                            Background="{DynamicResource SearchBackground}"
+                                            BorderBrush="{DynamicResource SearchBorderBrush}"
+                                            BorderThickness="1"
+                                            Foreground="{DynamicResource TextPrimaryBrush}"
+                                            CornerRadius="{DynamicResource FilterChipCornerRadius}"
+                                            Padding="12,6"
+                                            FontSize="{DynamicResource SubBodyFontSize}"
+                                            Cursor="Hand" />
+                                    <Button Content="{Binding L[Settings_About_License]}"
+                                            Command="{Binding OpenLicenseCommand}"
+                                            Background="{DynamicResource SearchBackground}"
+                                            BorderBrush="{DynamicResource SearchBorderBrush}"
+                                            BorderThickness="1"
+                                            Foreground="{DynamicResource TextPrimaryBrush}"
+                                            CornerRadius="{DynamicResource FilterChipCornerRadius}"
+                                            Padding="12,6"
+                                            FontSize="{DynamicResource SubBodyFontSize}"
+                                            Cursor="Hand" />
+                                </StackPanel>
                             </Grid>
                         </Border>
 

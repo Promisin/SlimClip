@@ -27,37 +27,56 @@ public class WindowsWindowActivationService : IWindowActivationService
     {
         if (hWnd == IntPtr.Zero) return false;
 
+        NativeMethods.AllowSetForegroundWindow(NativeMethods.ASFW_ANY);
+        NativeMethods.ShowWindow(hWnd, NativeMethods.SW_SHOW);
+        NativeMethods.BringWindowToTop(hWnd);
+
+        if (NativeMethods.SetForegroundWindow(hWnd))
+        {
+            return true;
+        }
+
+        // 若直接激活失败，尝试辅助激活，但坚决不对 Explorer 进程 AttachThreadInput（防止意外弹出系统开始菜单）
         IntPtr foregroundHwnd = NativeMethods.GetForegroundWindow();
-        uint foregroundThreadId = foregroundHwnd != IntPtr.Zero
-            ? NativeMethods.GetWindowThreadProcessId(foregroundHwnd, out _)
-            : 0;
+        uint foregroundThreadId = 0;
+        uint processId = 0;
+        if (foregroundHwnd != IntPtr.Zero)
+        {
+            foregroundThreadId = NativeMethods.GetWindowThreadProcessId(foregroundHwnd, out processId);
+        }
         uint currentThreadId = NativeMethods.GetCurrentThreadId();
 
-        bool attached = false;
-        if (foregroundThreadId != 0 && foregroundThreadId != currentThreadId)
+        bool isExplorer = false;
+        if (foregroundHwnd != IntPtr.Zero)
         {
-            attached = NativeMethods.AttachThreadInput(currentThreadId, foregroundThreadId, true);
-        }
-
-        try
-        {
-            // 允许任意进程激活前台
-            NativeMethods.AllowSetForegroundWindow(NativeMethods.ASFW_ANY);
-
-            // 产生无害空击键刷新 Windows 前台锁定判定
-            NativeMethods.keybd_event(0, 0, 0, UIntPtr.Zero);
-
-            NativeMethods.ShowWindow(hWnd, NativeMethods.SW_SHOW);
-            NativeMethods.BringWindowToTop(hWnd);
-            bool result = NativeMethods.SetForegroundWindow(hWnd);
-            return result;
-        }
-        finally
-        {
-            if (attached)
+            try
             {
-                NativeMethods.AttachThreadInput(currentThreadId, foregroundThreadId, false);
+                using var process = System.Diagnostics.Process.GetProcessById((int)processId);
+                if (string.Equals(process.ProcessName, "explorer", StringComparison.OrdinalIgnoreCase))
+                {
+                    isExplorer = true;
+                }
+            }
+            catch { }
+        }
+
+        if (!isExplorer && foregroundThreadId != 0 && foregroundThreadId != currentThreadId)
+        {
+            bool attached = NativeMethods.AttachThreadInput(currentThreadId, foregroundThreadId, true);
+            try
+            {
+                NativeMethods.BringWindowToTop(hWnd);
+                return NativeMethods.SetForegroundWindow(hWnd);
+            }
+            finally
+            {
+                if (attached)
+                {
+                    NativeMethods.AttachThreadInput(currentThreadId, foregroundThreadId, false);
+                }
             }
         }
+
+        return false;
     }
 }

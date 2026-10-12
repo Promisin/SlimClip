@@ -31,6 +31,17 @@ public class WindowsHotkeyService : IHotkeyService
         _wndProc = WndProc;
         _hookProc = LowLevelKeyboardHook;
         CreateMessageWindow();
+        PreWarmNeutralizer();
+    }
+
+    private void PreWarmNeutralizer()
+    {
+        try
+        {
+            System.Runtime.CompilerServices.RuntimeHelpers.PrepareMethod(
+                typeof(WindowsHotkeyService).GetMethod(nameof(NeutralizeWinKey), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.MethodHandle);
+        }
+        catch { }
     }
 
     private void CreateMessageWindow()
@@ -244,15 +255,10 @@ public class WindowsHotkeyService : IHotkeyService
                     _isChordTriggered = false;
                 }
 
-                // 2. Suppress Start menu upon releasing Win key if it was used in a hotkey chord
+                // 2. Win key release: reset suppression state and ALWAYS let OS receive Win keyup!
                 if (vk is 0x5B or 0x5C)
                 {
-                    if (IsWinKeySuppressionActive)
-                    {
-                        IsWinKeySuppressionActive = false;
-                        NeutralizeWinKey();
-                        return (IntPtr)1; // Swallow Win keyup so Windows Shell never receives orphan Win release
-                    }
+                    IsWinKeySuppressionActive = false;
                 }
             }
 
@@ -404,26 +410,34 @@ public class WindowsHotkeyService : IHotkeyService
     {
         OnWinKeyNeutralized?.Invoke();
 
-        // 1. Inject unassigned mask key (0xE8 / VK_NONAME) via keybd_event (immune to UIPI)
-        NativeMethods.keybd_event(0xE8, 0, 0, UIntPtr.Zero);
-        NativeMethods.keybd_event(0xE8, 0, NativeMethods.KEYEVENTF_KEYUP, UIntPtr.Zero);
-
-        // 2. Also send via SendInput for modern input pipeline redundancy
+        // Inject synthetic VK_CONTROL (0x11 with scancode 0x1D) to neutralize Start menu
         try
         {
             var inputs = new NativeMethods.INPUT[2];
             inputs[0].type = NativeMethods.INPUT_KEYBOARD;
-            inputs[0].u.ki.wVk = 0xE8;
+            inputs[0].u.ki.wVk = NativeMethods.VK_CONTROL;
+            inputs[0].u.ki.wScan = 0x1D;
 
             inputs[1].type = NativeMethods.INPUT_KEYBOARD;
-            inputs[1].u.ki.wVk = 0xE8;
+            inputs[1].u.ki.wVk = NativeMethods.VK_CONTROL;
+            inputs[1].u.ki.wScan = 0x1D;
             inputs[1].u.ki.dwFlags = NativeMethods.KEYEVENTF_KEYUP;
 
-            NativeMethods.SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<NativeMethods.INPUT>());
+            uint sent = NativeMethods.SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<NativeMethods.INPUT>());
+            if (sent == 0)
+            {
+                NativeMethods.keybd_event(NativeMethods.VK_CONTROL, 0x1D, 0, UIntPtr.Zero);
+                NativeMethods.keybd_event(NativeMethods.VK_CONTROL, 0x1D, NativeMethods.KEYEVENTF_KEYUP, UIntPtr.Zero);
+            }
         }
         catch
         {
-            // Ignore fallback failure
+            try
+            {
+                NativeMethods.keybd_event(NativeMethods.VK_CONTROL, 0x1D, 0, UIntPtr.Zero);
+                NativeMethods.keybd_event(NativeMethods.VK_CONTROL, 0x1D, NativeMethods.KEYEVENTF_KEYUP, UIntPtr.Zero);
+            }
+            catch { }
         }
     }
 
