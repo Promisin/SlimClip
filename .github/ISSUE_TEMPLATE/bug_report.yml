@@ -1,0 +1,57 @@
+name: 缺陷反馈 (Bug report)
+description: 提交软件运行中的缺陷、崩溃或异常行为
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢您反馈缺陷！请在提交前确保已查阅 [CHANGELOG.md](../CHANGELOG.md) 并测试过最新版本。
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: 运行操作系统 (Operating System)
+      description: 请选择出现该问题的系统平台与版本
+      options:
+        - Windows 11
+        - Windows 10
+        - macOS (Apple Silicon M系列)
+        - 其他
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: SlimClip 软件版本
+      description: 如 v1.0.3
+      placeholder: v1.0.3
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 缺陷现象描述 (Bug Description)
+      description: 请清晰描述发生的具体异常或预期外的行为
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 复现步骤 (Steps to Reproduce)
+      description: 请提供逐步复现的操作流程
+      placeholder: |
+        1. 按下快捷键呼出面板...
+        2. 复制一段包含...的内容
+        3. 发生异常...
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: 补充截图或日志 (Screenshots or Logs)
+      description: 可在此处拖入屏幕截图或控制台报错

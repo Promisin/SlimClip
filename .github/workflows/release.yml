@@ -1,0 +1,264 @@
+name: Release & Packaging
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag name to release (e.g. v1.0.3)'
+        required: true
+        default: 'v1.0.3'
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build Windows x64 Assets
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Determine Version
+        id: get_version
+        shell: pwsh
+        run: |
+          $ver = "${{ github.ref_name }}"
+          if ($ver -notlike "v*") {
+            $ver = "${{ github.event.inputs.tag_name }}"
+          }
+          $cleanVer = $ver.TrimStart('v')
+          echo "VERSION=$cleanVer" >> $env:GITHUB_ENV
+          echo "TAG=$ver" >> $env:GITHUB_ENV
+
+      - name: Publish Binaries
+        shell: pwsh
+        run: |
+          $staging = ".publish-staging/windows-x64"
+          $symbols = ".publish-staging/symbols"
+          New-Item -ItemType Directory -Force -Path $staging
+          New-Item -ItemType Directory -Force -Path $symbols
+
+          dotnet publish src/SlimClip.Desktop/SlimClip.Desktop.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:PublishReadyToRun=true `
+            -o $staging
+
+          # Separate symbols (.pdb)
+          Get-ChildItem -Path $staging -Filter "*.pdb" | Move-Item -Destination $symbols
+          # Remove local database or runtime artifacts
+          Get-ChildItem -Path $staging -Include "*.db", "*.db-*", "*.log" -File | Remove-Item -Force
+
+      - name: Package Portable ZIP & Symbols
+        shell: pwsh
+        run: |
+          $ver = $env:VERSION
+          $dist = "dist"
+          New-Item -ItemType Directory -Force -Path $dist
+
+          Compress-Archive -Path ".publish-staging/windows-x64/*" -DestinationPath "$dist/SlimClip-v$ver-windows-x64.zip" -Force
+          if (Test-Path ".publish-staging/symbols/*.pdb") {
+            Compress-Archive -Path ".publish-staging/symbols/*" -DestinationPath "$dist/SlimClip-v$ver-windows-x64-symbols.zip" -Force
+          }
+
+      - name: Compile Inno Setup Installer
+        shell: pwsh
+        run: |
+          $ver = $env:VERSION
+          $dist = "dist"
+          $sourceDir = Resolve-Path ".publish-staging/windows-x64"
+          $outDir = Resolve-Path $dist
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            $iscc = (Get-Command iscc.exe).Source
+          }
+
+          & $iscc /dMyAppVersion="$ver" /dSourceDir="$sourceDir" /o"$outDir" installer/setup.iss
+
+      - name: Upload Windows Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-assets
+          path: dist/*
+
+  build-macos:
+    name: Build macOS Apple Silicon Assets
+    runs-on: macos-14
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Determine Version
+        id: get_version
+        run: |
+          VER="${{ github.ref_name }}"
+          if [[ "$VER" != v* ]]; then
+            VER="${{ github.event.inputs.tag_name }}"
+          fi
+          CLEAN_VER="${VER#v}"
+          echo "VERSION=$CLEAN_VER" >> $GITHUB_ENV
+          echo "TAG=$VER" >> $GITHUB_ENV
+
+      - name: Publish Binaries
+        run: |
+          mkdir -p .publish-staging/bin
+          dotnet publish src/SlimClip.Desktop/SlimClip.Desktop.csproj \
+            -c Release \
+            -r osx-arm64 \
+            --self-contained true \
+            -p:PublishSingleFile=true \
+            -p:IncludeNativeLibrariesForSelfExtract=true \
+            -p:PublishReadyToRun=true \
+            -o .publish-staging/bin
+
+      - name: Assemble SlimClip.app Bundle
+        run: |
+          APP=".publish-staging/SlimClip.app"
+          mkdir -p "$APP/Contents/MacOS"
+          mkdir -p "$APP/Contents/Resources"
+
+          rsync -a --exclude="*.pdb" .publish-staging/bin/ "$APP/Contents/MacOS/"
+          chmod +x "$APP/Contents/MacOS/SlimClip"
+
+          if [ -f "src/SlimClip.Desktop/Assets/app.icns" ]; then
+            cp "src/SlimClip.Desktop/Assets/app.icns" "$APP/Contents/Resources/app.icns"
+          fi
+
+          echo -n "APPL????" > "$APP/Contents/PkgInfo"
+
+          cat <<EOF > "$APP/Contents/Info.plist"
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleName</key>
+              <string>SlimClip</string>
+              <key>CFBundleDisplayName</key>
+              <string>SlimClip</string>
+              <key>CFBundleIdentifier</key>
+              <string>com.promisin.slimclip</string>
+              <key>CFBundleVersion</key>
+              <string>${VERSION}</string>
+              <key>CFBundleShortVersionString</key>
+              <string>${VERSION}</string>
+              <key>CFBundlePackageType</key>
+              <string>APPL</string>
+              <key>CFBundleSignature</key>
+              <string>????</string>
+              <key>CFBundleExecutable</key>
+              <string>SlimClip</string>
+              <key>CFBundleIconFile</key>
+              <string>app.icns</string>
+              <key>LSUIElement</key>
+              <true/>
+              <key>NSHighResolutionCapable</key>
+              <true/>
+              <key>NSRequiresAquaSystemAppearance</key>
+              <false/>
+              <key>NSSupportsAutomaticGraphicsSwitching</key>
+              <true/>
+              <key>CFBundleSupportedPlatforms</key>
+              <array>
+                  <string>MacOSX</string>
+              </array>
+          </dict>
+          </plist>
+          EOF
+
+          # Ad-hoc Code Signing for Gatekeeper consistency
+          codesign --force --deep -s - "$APP"
+
+      - name: Package DMG and ZIP
+        run: |
+          mkdir -p dist
+          mkdir -p .publish-staging/dmg-staging
+          cp -R .publish-staging/SlimClip.app .publish-staging/dmg-staging/
+          ln -s /Applications .publish-staging/dmg-staging/Applications
+
+          DMG_NAME="SlimClip-v${VERSION}-macos-arm64.dmg"
+          hdiutil create \
+            -volname "SlimClip" \
+            -srcfolder .publish-staging/dmg-staging \
+            -ov \
+            -format UDZO \
+            "dist/$DMG_NAME"
+
+          ZIP_NAME="SlimClip-v${VERSION}-macos-arm64.zip"
+          ditto -c -k --sequesterRsrc --keepParent .publish-staging/SlimClip.app "dist/$ZIP_NAME"
+
+      - name: Upload macOS Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-assets
+          path: dist/*
+
+  publish-release:
+    name: Publish Release to GitHub
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download Windows Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-assets
+          path: release-assets
+
+      - name: Download macOS Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-assets
+          path: release-assets
+
+      - name: Extract Release Notes from CHANGELOG
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name || github.event.inputs.tag_name }}"
+          $cleanVer = $tag.TrimStart('v')
+          if (-not (Test-Path "CHANGELOG.md")) {
+            Write-Error "::error::未找到 CHANGELOG.md 文件，请在仓库中补充更新日志！"
+            exit 1
+          }
+
+          $changelog = Get-Content "CHANGELOG.md" -Raw
+          $pattern = "(?ms)^##\s+\[$([regex]::Escape($cleanVer))\].*?(?=^##\s+\[|\Z)"
+          if ($changelog -match $pattern) {
+            $notes = $matches[0].Trim()
+            [System.IO.File]::WriteAllText("release-notes.md", $notes, [System.Text.Encoding]::UTF8)
+            Write-Host "成功提取到版本 [$cleanVer] 的更新说明。" -ForegroundColor Green
+          } else {
+            Write-Error "::error::在 CHANGELOG.md 中未找到版本 [$cleanVer] 的更新说明，发布终止！请先在 CHANGELOG.md 中补充该版本的发布说明。"
+            exit 1
+          }
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name || github.event.inputs.tag_name }}
+          name: SlimClip ${{ github.ref_name || github.event.inputs.tag_name }}
+          body_path: release-notes.md
+          files: release-assets/*
+          draft: false
+          prerelease: false

@@ -1,0 +1,158 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Fluent 2 Geometry & Metrics (Theme Independent) -->
+    <CornerRadius x:Key="WindowCornerRadius">8</CornerRadius>
+    <Thickness x:Key="WindowBorderThickness">1</Thickness>
+
+    <CornerRadius x:Key="SearchBoxCornerRadius">17</CornerRadius>
+    <x:Double x:Key="SearchBoxHeight">34</x:Double>
+
+    <CornerRadius x:Key="FilterChipCornerRadius">16</CornerRadius>
+    <x:Double x:Key="FilterChipHeight">32</x:Double>
+
+    <CornerRadius x:Key="ItemCardCornerRadius">10</CornerRadius>
+    <Thickness x:Key="ItemCardMargin">0,2</Thickness>
+
+    <CornerRadius x:Key="KeyHintCornerRadius">6</CornerRadius>
+
+    <!-- Typography -->
+    <FontFamily x:Key="PrimaryFontFamily">
+        avares://SlimClip.UI/Assets/Fonts/HarmonyOS_Sans_SC.ttf#HarmonyOS Sans SC, Microsoft YaHei UI, Segoe UI, sans-serif
+    </FontFamily>
+    <FontWeight x:Key="AppTitleFontWeight">Bold</FontWeight>
+    <FontWeight x:Key="TitleFontWeight">SemiBold</FontWeight>
+    <FontWeight x:Key="BodyFontWeight">Normal</FontWeight>
+    <FontWeight x:Key="NormalFontWeight">Normal</FontWeight>
+    <x:Double x:Key="AppTitleFontSize">22</x:Double>
+    <x:Double x:Key="PageTitleFontSize">22</x:Double>
+    <x:Double x:Key="SectionTitleFontSize">16</x:Double>
+    <x:Double x:Key="BodyFontSize">14</x:Double>
+    <x:Double x:Key="SubBodyFontSize">13</x:Double>
+    <x:Double x:Key="CaptionFontSize">12</x:Double>
+
+    <!-- Shortcuts and Key Hints -->
+    <x:String x:Key="ShortcutCopyText">Ctrl+C</x:String>
+    <x:String x:Key="ShortcutEditText">Ctrl+E</x:String>
+    <x:String x:Key="ShortcutFavoriteText">Ctrl+D</x:String>
+    <x:String x:Key="ShortcutDeleteText">Ctrl+Backspace</x:String>
+    <x:String x:Key="ShortcutSaveTooltip">Ctrl+Enter</x:String>
+    <x:String x:Key="ShortcutCancelTooltip">Esc</x:String>
+    <x:String x:Key="KeyHintCategory">← →</x:String>
+    <x:String x:Key="KeyHintNav">↑ ↓</x:String>
+    <x:String x:Key="KeyHintPaste">Enter</x:String>
+    <x:String x:Key="KeyHintClose">Esc</x:String>
+    <x:String x:Key="KeyHintClear">Backspace</x:String>
+
+    <!-- Theme Dictionaries for Dynamic Theme Switching -->
+    <ResourceDictionary.ThemeDictionaries>
+        <!-- Fallback Default (Dark - Clinical Blueprint on Obsidian Glass) -->
+        <ResourceDictionary x:Key="Default">
+            <Color x:Key="AcrylicTintColor">#000000</Color>
+            <x:Double x:Key="AcrylicTintOpacity">0.75</x:Double>
+            <x:Double x:Key="AcrylicMaterialOpacity">0.45</x:Double>
+
+            <SolidColorBrush x:Key="InkBrush" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="PaperBrush" Color="#141416" />
+            <SolidColorBrush x:Key="MidGrayBrush" Color="#A3A3A3" />
+            <SolidColorBrush x:Key="HairlineBrush" Color="#262626" />
+            <SolidColorBrush x:Key="EmberBrush" Color="#E7000B" />
+
+            <SolidColorBrush x:Key="ActiveChipBackground" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="ActiveChipForeground" Color="#0A0A0A" />
+
+            <SolidColorBrush x:Key="WindowBorderBrush" Color="#262626" />
+            <SolidColorBrush x:Key="KeyHintBackground" Color="#1A1A1D" />
+            <SolidColorBrush x:Key="KeyHintBorderBrush" Color="#2E2E32" />
+            <SolidColorBrush x:Key="SurfaceBackground" Color="#A0202020" />
+            <SolidColorBrush x:Key="SearchBackground" Color="#B0141416" />
+            <SolidColorBrush x:Key="SearchBorderBrush" Color="#262626" />
+            <SolidColorBrush x:Key="CardBackground" Color="#B0141416" />
+            <SolidColorBrush x:Key="CardBorderBrush" Color="#262626" />
+            <SolidColorBrush x:Key="CardHoverBrush" Color="#D81F1F22" />
+            <SolidColorBrush x:Key="CardSelectedBrush" Color="#28282C" />
+            <SolidColorBrush x:Key="AccentBrush" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="DestructiveBrush" Color="#E7000B" />
+            <SolidColorBrush x:Key="TextPrimaryBrush" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="TextSecondaryBrush" Color="#CCCCCC" />
+            <SolidColorBrush x:Key="TextTertiaryBrush" Color="#A3A3A3" />
+            <SolidColorBrush x:Key="DividerBrush" Color="#262626" />
+            <SolidColorBrush x:Key="ItemBorderBrush" Color="Transparent" />
+            <SolidColorBrush x:Key="FooterBackground" Color="#300A0A0C" />
+            <SolidColorBrush x:Key="FlyoutBackground" Color="#141416" />
+        </ResourceDictionary>
+
+        <!-- Dark Theme (Deep, luminous, crisp Obsidian Acrylic Blueprint) -->
+        <ResourceDictionary x:Key="Dark">
+            <Color x:Key="AcrylicTintColor">#000000</Color>
+            <x:Double x:Key="AcrylicTintOpacity">0.75</x:Double>
+            <x:Double x:Key="AcrylicMaterialOpacity">0.45</x:Double>
+
+            <SolidColorBrush x:Key="InkBrush" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="PaperBrush" Color="#141416" />
+            <SolidColorBrush x:Key="MidGrayBrush" Color="#A3A3A3" />
+            <SolidColorBrush x:Key="HairlineBrush" Color="#262626" />
+            <SolidColorBrush x:Key="EmberBrush" Color="#E7000B" />
+
+            <SolidColorBrush x:Key="ActiveChipBackground" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="ActiveChipForeground" Color="#0A0A0A" />
+
+            <SolidColorBrush x:Key="WindowBorderBrush" Color="#262626" />
+            <SolidColorBrush x:Key="KeyHintBackground" Color="#1A1A1D" />
+            <SolidColorBrush x:Key="KeyHintBorderBrush" Color="#2E2E32" />
+            <SolidColorBrush x:Key="SurfaceBackground" Color="#A0202020" />
+            <SolidColorBrush x:Key="SearchBackground" Color="#B0141416" />
+            <SolidColorBrush x:Key="SearchBorderBrush" Color="#262626" />
+            <SolidColorBrush x:Key="CardBackground" Color="#B0141416" />
+            <SolidColorBrush x:Key="CardBorderBrush" Color="#262626" />
+            <SolidColorBrush x:Key="CardHoverBrush" Color="#D81F1F22" />
+            <SolidColorBrush x:Key="CardSelectedBrush" Color="#28282C" />
+            <SolidColorBrush x:Key="AccentBrush" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="DestructiveBrush" Color="#E7000B" />
+            <SolidColorBrush x:Key="TextPrimaryBrush" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="TextSecondaryBrush" Color="#CCCCCC" />
+            <SolidColorBrush x:Key="TextTertiaryBrush" Color="#A3A3A3" />
+            <SolidColorBrush x:Key="DividerBrush" Color="#262626" />
+            <SolidColorBrush x:Key="ItemBorderBrush" Color="Transparent" />
+            <SolidColorBrush x:Key="FooterBackground" Color="#300A0A0C" />
+            <SolidColorBrush x:Key="FlyoutBackground" Color="#141416" />
+        </ResourceDictionary>
+
+        <!-- Light Theme (Clinical Blueprint on Frosted White Paper Acrylic) -->
+        <ResourceDictionary x:Key="Light">
+            <Color x:Key="AcrylicTintColor">#FFFFFF</Color>
+            <x:Double x:Key="AcrylicTintOpacity">0.75</x:Double>
+            <x:Double x:Key="AcrylicMaterialOpacity">0.45</x:Double>
+
+            <SolidColorBrush x:Key="InkBrush" Color="#0A0A0A" />
+            <SolidColorBrush x:Key="PaperBrush" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="MidGrayBrush" Color="#595959" />
+            <SolidColorBrush x:Key="HairlineBrush" Color="#E5E5E5" />
+            <SolidColorBrush x:Key="EmberBrush" Color="#E7000B" />
+
+            <SolidColorBrush x:Key="ActiveChipBackground" Color="#0A0A0A" />
+            <SolidColorBrush x:Key="ActiveChipForeground" Color="#FFFFFF" />
+
+            <SolidColorBrush x:Key="WindowBorderBrush" Color="#D4D4D8" />
+            <SolidColorBrush x:Key="KeyHintBackground" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="KeyHintBorderBrush" Color="#D4D4D8" />
+            <SolidColorBrush x:Key="SurfaceBackground" Color="#A0D0D0D0" />
+            <SolidColorBrush x:Key="SearchBackground" Color="#B0E0E0E0" />
+            <SolidColorBrush x:Key="SearchBorderBrush" Color="#D4D4D8" />
+            <SolidColorBrush x:Key="CardBackground" Color="#B0E0E0E0" />
+            <SolidColorBrush x:Key="CardBorderBrush" Color="#E5E5E5" />
+            <SolidColorBrush x:Key="CardHoverBrush" Color="#E8F4F4F5" />
+            <SolidColorBrush x:Key="CardSelectedBrush" Color="#E4E4E7" />
+            <SolidColorBrush x:Key="AccentBrush" Color="#0A0A0A" />
+            <SolidColorBrush x:Key="DestructiveBrush" Color="#E7000B" />
+            <SolidColorBrush x:Key="TextPrimaryBrush" Color="#0A0A0A" />
+            <SolidColorBrush x:Key="TextSecondaryBrush" Color="#383838" />
+            <SolidColorBrush x:Key="TextTertiaryBrush" Color="#595959" />
+            <SolidColorBrush x:Key="DividerBrush" Color="#E5E5E5" />
+            <SolidColorBrush x:Key="ItemBorderBrush" Color="Transparent" />
+            <SolidColorBrush x:Key="FooterBackground" Color="#E6F5F5F5" />
+            <SolidColorBrush x:Key="FlyoutBackground" Color="#FFFFFF" />
+        </ResourceDictionary>
+    </ResourceDictionary.ThemeDictionaries>
+
+</ResourceDictionary>
