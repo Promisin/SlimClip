@@ -7,6 +7,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -28,7 +29,7 @@ public partial class SettingsWindow : Window
     public SettingsWindow()
     {
         InitializeComponent();
-        Avalonia.Media.RenderOptions.SetTextRenderingMode(this, Avalonia.Media.TextRenderingMode.SubpixelAntialias);
+        Avalonia.Media.TextOptions.SetTextRenderingMode(this, Avalonia.Media.TextRenderingMode.SubpixelAntialias);
 
         var tabBar = this.FindControl<SlimClip.UI.Controls.UnderlineTabBar>("SettingsTabBar");
         if (tabBar != null)
@@ -142,17 +143,17 @@ public partial class SettingsWindow : Window
 
     private void OnThemeSystemChecked(object? sender, RoutedEventArgs e)
     {
-        if (DataContext is SettingsViewModel vm) vm.ThemeMode = AppThemeMode.System;
+        if (sender is RadioButton { IsChecked: true } && DataContext is SettingsViewModel vm) vm.ThemeMode = AppThemeMode.System;
     }
 
     private void OnThemeLightChecked(object? sender, RoutedEventArgs e)
     {
-        if (DataContext is SettingsViewModel vm) vm.ThemeMode = AppThemeMode.Light;
+        if (sender is RadioButton { IsChecked: true } && DataContext is SettingsViewModel vm) vm.ThemeMode = AppThemeMode.Light;
     }
 
     private void OnThemeDarkChecked(object? sender, RoutedEventArgs e)
     {
-        if (DataContext is SettingsViewModel vm) vm.ThemeMode = AppThemeMode.Dark;
+        if (sender is RadioButton { IsChecked: true } && DataContext is SettingsViewModel vm) vm.ThemeMode = AppThemeMode.Dark;
     }
 
     private void OnClearAllDataClicked(object? sender, RoutedEventArgs e)

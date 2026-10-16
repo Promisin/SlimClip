@@ -96,7 +96,7 @@ public class StyleTests
             Assert.Equal(3.0, indicator.Height);
             Assert.Equal(new Avalonia.CornerRadius(1.5), indicator.CornerRadius);
 
-            Assert.NotEqual(Avalonia.Media.TextRenderingMode.Antialias, Avalonia.Media.RenderOptions.GetTextRenderingMode(panel));
+            Assert.NotEqual(Avalonia.Media.TextRenderingMode.Antialias, Avalonia.Media.TextOptions.GetTextRenderingMode(panel));
         }
         finally
         {
@@ -576,8 +576,8 @@ public class StyleTests
 
         try
         {
-            var panelMode = Avalonia.Media.RenderOptions.GetTextRenderingMode(panel);
-            var settingsMode = Avalonia.Media.RenderOptions.GetTextRenderingMode(settings);
+            var panelMode = Avalonia.Media.TextOptions.GetTextRenderingMode(panel);
+            var settingsMode = Avalonia.Media.TextOptions.GetTextRenderingMode(settings);
 
             Assert.NotEqual(Avalonia.Media.TextRenderingMode.Antialias, panelMode);
             Assert.NotEqual(Avalonia.Media.TextRenderingMode.Antialias, settingsMode);
@@ -761,9 +761,9 @@ public class StyleTests
         Assert.Equal("fonts:HarmonyOS", collection.Key.ToString());
 
         var panel = new SlimClip.UI.Views.ClipboardPanel();
-        Avalonia.Media.RenderOptions.SetTextRenderingMode(panel, Avalonia.Media.TextRenderingMode.Antialias);
+        Avalonia.Media.TextOptions.SetTextRenderingMode(panel, Avalonia.Media.TextRenderingMode.Antialias);
         Avalonia.Media.RenderOptions.SetEdgeMode(panel, Avalonia.Media.EdgeMode.Antialias);
-        var mode = Avalonia.Media.RenderOptions.GetTextRenderingMode(panel);
+        var mode = Avalonia.Media.TextOptions.GetTextRenderingMode(panel);
         Assert.Equal(Avalonia.Media.TextRenderingMode.Antialias, mode);
     }
 
@@ -849,7 +849,7 @@ public class StyleTests
         try
         {
             var tb = panel.FindControl<TextBlock>("CategoryKeyHint")!;
-            Assert.Equal(Avalonia.Media.FontWeight.SemiBold, tb.FontWeight);
+            Assert.Equal(Avalonia.Media.FontWeight.Normal, tb.FontWeight);
         }
         finally
         {
@@ -1475,8 +1475,7 @@ public class StyleTests
             // Popup CornerRadius must match ComboBox CornerRadius (6)
             Assert.Equal(new CornerRadius(6), popupBorder.CornerRadius);
 
-            var pHost = popup.Host as Visual;
-            var foundItems = pHost?.GetVisualDescendants().OfType<ComboBoxItem>().ToList() ?? new List<ComboBoxItem>();
+            var foundItems = popup.Child?.GetVisualDescendants().OfType<ComboBoxItem>().ToList() ?? new List<ComboBoxItem>();
             Assert.Equal(2, foundItems.Count);
 
             // First item is selected (zh-CN)
@@ -1691,6 +1690,8 @@ public class StyleTests
         public Task CleanPeriodicAsync(int days) => Task.CompletedTask;
         public Task UpdateTimestampAsync(string id, DateTime timestamp) => Task.CompletedTask;
         public Task<bool> UpdateItemContentAsync(string id, string text, string? htmlContent, string? rtfContent, DateTime updatedAt) => Task.FromResult(true);
+        public Task<List<ClipboardItem>> GetPagedItemsAsync(int limit, int offset, ClipboardType? type = null, bool favoriteOnly = false, string? searchText = null, CancellationToken cancellationToken = default) => Task.FromResult(new List<ClipboardItem>());
+        public Task<(string? HtmlContent, string? RtfContent)> GetItemContentAsync(string id, CancellationToken cancellationToken = default) => Task.FromResult<(string?, string?)>((null, null));
         public void Dispose() { }
     }
 }

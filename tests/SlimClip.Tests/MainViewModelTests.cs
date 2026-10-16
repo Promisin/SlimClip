@@ -254,6 +254,7 @@ public class MainViewModelTests : IDisposable
         monitor.TriggerCopy(new ClipboardData { Text = "Item 1" });
         monitor.TriggerCopy(new ClipboardData { Text = "Item 2" });
         monitor.TriggerCopy(new ClipboardData { Text = "Item 3" });
+        await Task.Delay(50);
 
         Assert.Equal(3, vm.Items.Count);
 

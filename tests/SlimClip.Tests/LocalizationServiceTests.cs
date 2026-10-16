@@ -207,6 +207,8 @@ public class LocalizationServiceTests
         public Task CleanPeriodicAsync(int days) => Task.CompletedTask;
         public Task UpdateTimestampAsync(string id, DateTime timestamp) => Task.CompletedTask;
         public Task<bool> UpdateItemContentAsync(string id, string text, string? htmlContent, string? rtfContent, DateTime updatedAt) => Task.FromResult(true);
+        public Task<List<ClipboardItem>> GetPagedItemsAsync(int limit, int offset, ClipboardType? type = null, bool favoriteOnly = false, string? searchText = null, CancellationToken cancellationToken = default) => Task.FromResult(new List<ClipboardItem>());
+        public Task<(string? HtmlContent, string? RtfContent)> GetItemContentAsync(string id, CancellationToken cancellationToken = default) => Task.FromResult<(string?, string?)>((null, null));
         public void Dispose() { }
     }
 

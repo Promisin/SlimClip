@@ -21,9 +21,9 @@
         avares://SlimClip.UI/Assets/Fonts/HarmonyOS_Sans_SC.ttf#HarmonyOS Sans SC, Microsoft YaHei UI, Segoe UI, sans-serif
     </FontFamily>
     <FontWeight x:Key="AppTitleFontWeight">Bold</FontWeight>
-    <FontWeight x:Key="TitleFontWeight">Bold</FontWeight>
-    <FontWeight x:Key="BodyFontWeight">SemiBold</FontWeight>
-    <FontWeight x:Key="NormalFontWeight">SemiBold</FontWeight>
+    <FontWeight x:Key="TitleFontWeight">SemiBold</FontWeight>
+    <FontWeight x:Key="BodyFontWeight">Normal</FontWeight>
+    <FontWeight x:Key="NormalFontWeight">Normal</FontWeight>
     <x:Double x:Key="AppTitleFontSize">22</x:Double>
     <x:Double x:Key="PageTitleFontSize">22</x:Double>
     <x:Double x:Key="SectionTitleFontSize">16</x:Double>

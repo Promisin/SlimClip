@@ -471,7 +471,7 @@ public partial class SettingsViewModel : ObservableObject
     {
         var asm = System.Reflection.Assembly.GetEntryAssembly() ?? typeof(SettingsViewModel).Assembly;
         var ver = asm.GetName().Version;
-        return ver != null ? $"v{ver.Major}.{ver.Minor}.{ver.Build}" : "v1.0.3";
+        return ver != null ? $"v{ver.Major}.{ver.Minor}.{ver.Build}" : "v1.0.4";
     }
 
     private static string GetPlatformDisplay()

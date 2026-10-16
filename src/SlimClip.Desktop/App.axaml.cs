@@ -128,7 +128,10 @@ public partial class App : Application
                 _clipboardMonitor,
                 _pasteService,
                 _settingsService,
-                _localizationService);
+                _localizationService)
+            {
+                SearchDebounceMs = 250
+            };
 
             _settingsViewModel = new SettingsViewModel(
                 _settingsService,

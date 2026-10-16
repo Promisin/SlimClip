@@ -6,7 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace SlimClip.Core.Models;
 
-public partial class ClipboardItem : ObservableObject
+public partial class ClipboardItem : ObservableObject, IEquatable<ClipboardItem>
 {
     [ObservableProperty]
     private string _id = Guid.NewGuid().ToString("N");
@@ -88,6 +88,27 @@ public partial class ClipboardItem : ObservableObject
         ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp", ".ico", ".tiff", ".tif"
     };
 
+    private string[]? _parsedFilePathsCache;
+    private bool? _isSingleImageFileCache;
+
+    partial void OnFilePathsChanged(string? value)
+    {
+        _parsedFilePathsCache = null;
+        _isSingleImageFileCache = null;
+    }
+
+    partial void OnTextChanged(string value)
+    {
+        _parsedFilePathsCache = null;
+        _isSingleImageFileCache = null;
+    }
+
+    partial void OnTypeChanged(ClipboardType value)
+    {
+        _parsedFilePathsCache = null;
+        _isSingleImageFileCache = null;
+    }
+
     public static bool IsImageFilePath(string? path)
     {
         if (string.IsNullOrWhiteSpace(path)) return false;
@@ -99,16 +120,31 @@ public partial class ClipboardItem : ObservableObject
     {
         get
         {
-            if (!IsFile) return false;
+            if (_isSingleImageFileCache.HasValue)
+                return _isSingleImageFileCache.Value;
+
+            if (!IsFile)
+            {
+                _isSingleImageFileCache = false;
+                return false;
+            }
+
             var paths = ParsedFilePaths;
             if (paths.Length != 1 || !IsImageFilePath(paths[0]))
+            {
+                _isSingleImageFileCache = false;
                 return false;
+            }
+
             try
             {
-                return File.Exists(paths[0]);
+                var exists = File.Exists(paths[0]);
+                _isSingleImageFileCache = exists;
+                return exists;
             }
             catch
             {
+                _isSingleImageFileCache = false;
                 return false;
             }
         }
@@ -134,13 +170,19 @@ public partial class ClipboardItem : ObservableObject
     {
         get
         {
+            if (_parsedFilePathsCache != null)
+                return _parsedFilePathsCache;
+
             if (!string.IsNullOrWhiteSpace(FilePaths))
             {
                 try
                 {
                     var result = JsonSerializer.Deserialize<string[]>(FilePaths);
                     if (result != null && result.Length > 0)
+                    {
+                        _parsedFilePathsCache = result;
                         return result;
+                    }
                 }
                 catch
                 {
@@ -151,10 +193,14 @@ public partial class ClipboardItem : ObservableObject
             {
                 var lines = Text.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries);
                 if (lines.Length > 0)
+                {
+                    _parsedFilePathsCache = lines;
                     return lines;
+                }
             }
 
-            return Array.Empty<string>();
+            _parsedFilePathsCache = Array.Empty<string>();
+            return _parsedFilePathsCache;
         }
     }
 
@@ -208,4 +254,15 @@ public partial class ClipboardItem : ObservableObject
 
         return preview;
     }
+
+    public bool Equals(ClipboardItem? other)
+    {
+        if (ReferenceEquals(this, other)) return true;
+        if (other is null) return false;
+        return Id == other.Id;
+    }
+
+    public override bool Equals(object? obj) => Equals(obj as ClipboardItem);
+
+    public override int GetHashCode() => Id.GetHashCode();
 }

@@ -18,7 +18,25 @@ public partial class MainViewModel : ObservableObject
     private readonly IPasteService _pasteService;
     private readonly ISettingsService _settingsService;
     private readonly ILocalizationService _localizationService;
-    private readonly List<ClipboardItem> _allItems = new();
+    private readonly System.Threading.SynchronizationContext? _syncContext = System.Threading.SynchronizationContext.Current;
+    public const int PageSize = 50;
+    private int _currentOffset = 0;
+    private CancellationTokenSource? _searchCts;
+
+    private void RunOnUiContext(Action action)
+    {
+        if (_syncContext != null && System.Threading.SynchronizationContext.Current != _syncContext)
+        {
+            _syncContext.Post(_ => action(), null);
+        }
+        else
+        {
+            action();
+        }
+    }
+
+    public int SearchDebounceMs { get; set; } = 0;
+    public event Action? RequestScrollToHome;
 
     public ILocalizationService L => _localizationService;
 
@@ -29,6 +47,12 @@ public partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     private ClipboardItem? _selectedItem;
+
+    [ObservableProperty]
+    private bool _isLoadingMore;
+
+    [ObservableProperty]
+    private bool _hasMoreItems = true;
 
     [ObservableProperty]
     private string _searchText = string.Empty;
@@ -161,7 +185,7 @@ public partial class MainViewModel : ObservableObject
             return dt.ToString("yyyy-MM-dd HH:mm:ss");
         };
 
-        foreach (var item in _allItems)
+        foreach (var item in Items)
         {
             item.NotifyCopiedAtChanged();
         }
@@ -178,16 +202,39 @@ public partial class MainViewModel : ObservableObject
             await _history.CleanPeriodicAsync(_settingsService.Settings.CleanPeriodDays);
         }
 
-        var loaded = await _history.GetAllItemsAsync();
-        _allItems.Clear();
-        _allItems.AddRange(loaded);
-
-        RefreshFilteredList();
+        await RefreshFilteredListAsync();
     }
 
     partial void OnSearchTextChanged(string value)
     {
-        RefreshFilteredList();
+        if (SearchDebounceMs <= 0)
+        {
+            RefreshFilteredList();
+        }
+        else
+        {
+            _searchCts?.Cancel();
+            _searchCts = new CancellationTokenSource();
+            var token = _searchCts.Token;
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await Task.Delay(SearchDebounceMs, token);
+                    if (!token.IsCancellationRequested)
+                    {
+                        RunOnUiContext(() =>
+                        {
+                            if (!token.IsCancellationRequested)
+                            {
+                                _ = RefreshFilteredListAsync(token);
+                            }
+                        });
+                    }
+                }
+                catch (OperationCanceledException) { }
+            }, token);
+        }
     }
 
     partial void OnCurrentFilterTypeChanged(string value)
@@ -201,24 +248,53 @@ public partial class MainViewModel : ObservableObject
         {
             var recorded = await _history.RecordAsync(data);
 
-            var existingIndex = _allItems.FindIndex(i => i.Id == recorded.Id);
-            if (existingIndex >= 0)
-            {
-                _allItems[existingIndex] = recorded;
-            }
-            else
-            {
-                _allItems.Insert(0, recorded);
-            }
-
             if (_settingsService.Settings.AutoCleanEnabled && _settingsService.Settings.MaxHistoryItems > 0)
             {
                 await _history.TrimExcessAsync(_settingsService.Settings.MaxHistoryItems);
             }
 
-            RefreshFilteredList();
+            var (type, favoriteOnly, search) = GetQueryFilter();
+            bool matchesType = !type.HasValue || recorded.Type == type.Value;
+            bool matchesFav = !favoriteOnly || recorded.IsFavorite;
+            bool matchesSearch = string.IsNullOrWhiteSpace(search) || 
+                                 (!string.IsNullOrEmpty(recorded.Text) && recorded.Text.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                                 (!string.IsNullOrEmpty(recorded.FileDisplayName) && recorded.FileDisplayName.Contains(search, StringComparison.OrdinalIgnoreCase));
+
+            if (matchesType && matchesFav && matchesSearch)
+            {
+                var existingIndex = -1;
+                for (int i = 0; i < Items.Count; i++)
+                {
+                    if (Items[i].Id == recorded.Id)
+                    {
+                        existingIndex = i;
+                        break;
+                    }
+                }
+
+                if (existingIndex >= 0)
+                {
+                    Items.Move(existingIndex, 0);
+                    Items[0] = recorded;
+                }
+                else
+                {
+                    Items.Insert(0, recorded);
+                }
+
+                HasItems = Items.Count > 0;
+                SelectedItem = Items.FirstOrDefault();
+                UpdateEmptyDisplays();
+                RequestScrollToHome?.Invoke();
+            }
+            else
+            {
+                RefreshFilteredList();
+            }
         }
-        catch { }
+        catch
+        {
+        }
     }
 
     public void ResetState()
@@ -231,37 +307,86 @@ public partial class MainViewModel : ObservableObject
 
     public void RefreshFilteredList()
     {
-        var filtered = _allItems.AsEnumerable();
+        _ = RefreshFilteredListAsync();
+    }
 
-        // Type filter
-        if (CurrentFilterType == "Favorite")
-            filtered = filtered.Where(i => i.IsFavorite);
-        else if (CurrentFilterType == "Text")
-            filtered = filtered.Where(i => i.Type == ClipboardType.Text);
-        else if (CurrentFilterType == "Image")
-            filtered = filtered.Where(i => i.Type == ClipboardType.Image);
-        else if (CurrentFilterType == "File")
-            filtered = filtered.Where(i => i.Type == ClipboardType.File);
+    public async Task RefreshFilteredListAsync(CancellationToken ct = default)
+    {
+        _currentOffset = 0;
+        HasMoreItems = true;
 
-        // Search text
-        if (!string.IsNullOrWhiteSpace(SearchText))
-        {
-            var term = SearchText.Trim();
-            filtered = filtered.Where(i =>
-                (!string.IsNullOrEmpty(i.Text) && i.Text.Contains(term, StringComparison.OrdinalIgnoreCase)) ||
-                (!string.IsNullOrEmpty(i.FileDisplayName) && i.FileDisplayName.Contains(term, StringComparison.OrdinalIgnoreCase)) ||
-                (!string.IsNullOrEmpty(i.FilePathDisplay) && i.FilePathDisplay.Contains(term, StringComparison.OrdinalIgnoreCase)));
-        }
+        var (type, favoriteOnly, search) = GetQueryFilter();
+        var paged = await _history.GetPagedItemsAsync(PageSize, 0, type, favoriteOnly, search, ct);
 
-        var sorted = filtered.OrderByDescending(i => i.CopiedAt)
-                             .ToList();
-
-        Items = new ObservableCollection<ClipboardItem>(sorted);
+        Items = new ObservableCollection<ClipboardItem>(paged);
+        _currentOffset = paged.Count;
+        HasMoreItems = paged.Count >= PageSize;
         HasItems = Items.Count > 0;
         SelectedItem = Items.FirstOrDefault();
+        UpdateEmptyDisplays();
+        RequestScrollToHome?.Invoke();
+    }
+
+    private (ClipboardType? type, bool favoriteOnly, string? search) GetQueryFilter()
+    {
+        bool favoriteOnly = CurrentFilterType == "Favorite";
+        ClipboardType? type = CurrentFilterType switch
+        {
+            "Text" => ClipboardType.Text,
+            "Image" => ClipboardType.Image,
+            "File" => ClipboardType.File,
+            _ => null
+        };
+        string? search = string.IsNullOrWhiteSpace(SearchText) ? null : SearchText.Trim();
+        return (type, favoriteOnly, search);
+    }
+
+    [RelayCommand]
+    public async Task LoadNextPageAsync()
+    {
+        if (IsLoadingMore || !HasMoreItems)
+            return;
+
+        IsLoadingMore = true;
+        try
+        {
+            var (type, favoriteOnly, search) = GetQueryFilter();
+            var paged = await _history.GetPagedItemsAsync(PageSize, _currentOffset, type, favoriteOnly, search);
+            if (paged.Count > 0)
+            {
+                foreach (var item in paged)
+                {
+                    Items.Add(item);
+                }
+                _currentOffset += paged.Count;
+            }
+
+            if (paged.Count < PageSize)
+            {
+                HasMoreItems = false;
+            }
+        }
+        finally
+        {
+            IsLoadingMore = false;
+        }
+    }
+
+    private void UpdateEmptyDisplays()
+    {
         OnPropertyChanged(nameof(EmptyTitleDisplay));
         OnPropertyChanged(nameof(EmptyHintDisplay));
         OnPropertyChanged(nameof(EmptyIconKind));
+    }
+
+    private async Task EnsureItemContentAsync(ClipboardItem item)
+    {
+        if (item.Type == ClipboardType.Text && item.HtmlContent == null && item.RtfContent == null)
+        {
+            var (html, rtf) = await _history.GetItemContentAsync(item.Id);
+            item.HtmlContent = html;
+            item.RtfContent = rtf;
+        }
     }
 
     [RelayCommand]
@@ -271,6 +396,7 @@ public partial class MainViewModel : ObservableObject
             return;
 
         var item = SelectedItem;
+        await EnsureItemContentAsync(item);
 
         // Check if file type has missing files
         if (item.IsFile)
@@ -301,6 +427,14 @@ public partial class MainViewModel : ObservableObject
         await _history.UpdateTimestampAsync(item.Id, DateTime.Now);
     }
 
+    private void RemoveItemAndSelectFallback(ClipboardItem item)
+    {
+        Items.Remove(item);
+        HasItems = Items.Count > 0;
+        SelectedItem = Items.FirstOrDefault();
+        UpdateEmptyDisplays();
+    }
+
     [RelayCommand]
     public async Task ToggleFavoriteAsync(ClipboardItem? item)
     {
@@ -309,7 +443,10 @@ public partial class MainViewModel : ObservableObject
 
         await _history.ToggleFavoriteAsync(item.Id);
         item.IsFavorite = !item.IsFavorite;
-        RefreshFilteredList();
+        if (CurrentFilterType == "Favorite" && !item.IsFavorite)
+        {
+            RemoveItemAndSelectFallback(item);
+        }
     }
 
     [RelayCommand]
@@ -319,8 +456,7 @@ public partial class MainViewModel : ObservableObject
             return;
 
         await _history.DeleteItemAsync(item.Id);
-        _allItems.RemoveAll(i => i.Id == item.Id);
-        RefreshFilteredList();
+        RemoveItemAndSelectFallback(item);
     }
 
     public void CycleFilter(bool forward)
@@ -341,21 +477,25 @@ public partial class MainViewModel : ObservableObject
         if (item == null)
             return;
 
+        await EnsureItemContentAsync(item);
+
         _monitor.SuppressNextCapture();
         await _pasteService.SetClipboardDataAsync(item);
         var now = DateTime.Now;
         await _history.UpdateTimestampAsync(item.Id, now);
         item.CopiedAt = now;
-        RefreshFilteredList();
-        SelectedItem = item;
+        await RefreshFilteredListAsync();
+        SelectedItem = Items.FirstOrDefault(i => i.Id == item.Id) ?? item;
     }
 
     [RelayCommand]
-    public void StartEditItem(ClipboardItem? item)
+    public async Task StartEditItemAsync(ClipboardItem? item)
     {
         item ??= SelectedItem;
         if (item == null || item.Type != ClipboardType.Text)
             return;
+
+        await EnsureItemContentAsync(item);
 
         EditingTargetItem = item;
         _bufferedPlainText = item.Text ?? string.Empty;
@@ -364,6 +504,11 @@ public partial class MainViewModel : ObservableObject
         IsRichTextMode = HasRichText;
         EditingText = IsRichTextMode ? _bufferedHtmlContent : _bufferedPlainText;
         IsEditingItem = true;
+    }
+
+    public void StartEditItem(ClipboardItem? item)
+    {
+        _ = StartEditItemAsync(item);
     }
 
     [RelayCommand]

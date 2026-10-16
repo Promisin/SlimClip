@@ -17,7 +17,7 @@
         ShowInTaskbar="False"
         Topmost="True"
         ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaChromeHints="NoChrome"
+        WindowDecorations="BorderOnly"
         ExtendClientAreaTitleBarHeightHint="-1"
         TransparencyLevelHint="AcrylicBlur,Blur,Transparent"
         Background="Transparent"
@@ -39,6 +39,7 @@
         </Style>
         <Style Selector="ListBoxItem">
             <Setter Property="FocusAdorner" Value="{x:Null}" />
+            <Setter Property="MinHeight" Value="56" />
             <Setter Property="Padding" Value="0" />
             <Setter Property="Margin" Value="{DynamicResource ItemCardMargin}" />
             <Setter Property="Background" Value="{DynamicResource CardBackground}" />
@@ -240,7 +241,7 @@
                         <TextBox Grid.Column="1"
                                  x:Name="SearchBox"
                                  Text="{Binding SearchText, Mode=TwoWay}"
-                                 Watermark="{Binding L[Panel_Search_Placeholder]}"
+                                 PlaceholderText="{Binding L[Panel_Search_Placeholder]}"
                                  Background="Transparent"
                                  BorderThickness="0"
                                  Foreground="{DynamicResource TextPrimaryBrush}"
@@ -271,10 +272,18 @@
                 <ListBox x:Name="ItemsListBox"
                          ItemsSource="{Binding Items}"
                          SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+                         AutoScrollToSelectedItem="False"
                          Background="Transparent"
                          BorderThickness="0"
                          Padding="10,6"
+                         ScrollViewer.IsScrollChainingEnabled="False"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                          DoubleTapped="OnItemDoubleTapped">
+                    <ListBox.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel />
+                        </ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
                     <ListBox.ItemTemplate>
                         <DataTemplate x:DataType="models:ClipboardItem">
                             <Panel Margin="0" ClipToBounds="True" Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
@@ -351,7 +360,7 @@
                                                            MaxLines="2" />
                                             </StackPanel>
 
-                                            <!-- Image Display -->
+                                            <!-- Image Display (Tier 3: Fixed 180x110 with skeleton placeholder) -->
                                             <Border IsVisible="{Binding HasImagePreview}"
                                                     CornerRadius="4"
                                                     ClipToBounds="True"
@@ -359,14 +368,18 @@
                                                     BorderBrush="{DynamicResource SearchBorderBrush}"
                                                     BorderThickness="1"
                                                     HorizontalAlignment="Left"
-                                                    MaxHeight="120">
-                                                <Image Source="{Binding EffectiveImagePath, Converter={StaticResource ImagePathToBitmapConverter}}"
-                                                       MaxWidth="180"
-                                                       MaxHeight="120"
-                                                       Stretch="Uniform" />
+                                                    Width="180"
+                                                    Height="110">
+                                                <Panel>
+                                                    <Border Background="{DynamicResource CardBackgroundSecondary}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                                                        <controls:AppIcon Kind="Image" Size="24" Foreground="{DynamicResource TextTertiaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.5" />
+                                                    </Border>
+                                                    <Image Source="{Binding EffectiveImagePath, Converter={StaticResource ImagePathToBitmapConverter}}"
+                                                           Stretch="Uniform" />
+                                                </Panel>
                                             </Border>
 
-                                            <!-- Text Display -->
+                                            <!-- Text Display (Tier 1 & 2: Deterministic Height) -->
                                             <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding IsText}" VerticalAlignment="Top">
                                                 <!-- Hex Color Swatch -->
                                                 <Border Grid.Column="0"
@@ -387,6 +400,7 @@
                                                            Foreground="{DynamicResource TextPrimaryBrush}"
                                                            TextWrapping="Wrap"
                                                            MaxLines="3"
+                                                           MaxHeight="48"
                                                            TextTrimming="CharacterEllipsis"
                                                            VerticalAlignment="Top" />
                                             </Grid>

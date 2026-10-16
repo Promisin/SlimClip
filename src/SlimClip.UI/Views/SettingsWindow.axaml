@@ -15,7 +15,7 @@
         CanResize="True"
         WindowStartupLocation="CenterScreen"
         ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaChromeHints="NoChrome"
+        WindowDecorations="BorderOnly"
         ExtendClientAreaTitleBarHeightHint="-1"
         TransparencyLevelHint="AcrylicBlur,Blur,Transparent"
         Background="Transparent"
@@ -774,9 +774,9 @@
                             <StackPanel Spacing="12">
                                 <TextBlock Text="{Binding L[Settings_Appearance_Theme]}" FontSize="{DynamicResource SectionTitleFontSize}" FontWeight="{DynamicResource BodyFontWeight}" Foreground="{DynamicResource TextPrimaryBrush}" />
                                 <StackPanel Orientation="Horizontal" Spacing="20">
-                                    <RadioButton x:Name="ThemeSystemRadio" Content="{Binding L[Settings_Appearance_System]}" GroupName="ThemeModeGroup" Checked="OnThemeSystemChecked" FontSize="{DynamicResource BodyFontSize}" FontWeight="{DynamicResource NormalFontWeight}" />
-                                    <RadioButton x:Name="ThemeLightRadio" Content="{Binding L[Settings_Appearance_Light]}" GroupName="ThemeModeGroup" Checked="OnThemeLightChecked" FontSize="{DynamicResource BodyFontSize}" FontWeight="{DynamicResource NormalFontWeight}" />
-                                    <RadioButton x:Name="ThemeDarkRadio" Content="{Binding L[Settings_Appearance_Dark]}" GroupName="ThemeModeGroup" Checked="OnThemeDarkChecked" FontSize="{DynamicResource BodyFontSize}" FontWeight="{DynamicResource NormalFontWeight}" />
+                                    <RadioButton x:Name="ThemeSystemRadio" Content="{Binding L[Settings_Appearance_System]}" GroupName="ThemeModeGroup" IsCheckedChanged="OnThemeSystemChecked" FontSize="{DynamicResource BodyFontSize}" FontWeight="{DynamicResource NormalFontWeight}" />
+                                    <RadioButton x:Name="ThemeLightRadio" Content="{Binding L[Settings_Appearance_Light]}" GroupName="ThemeModeGroup" IsCheckedChanged="OnThemeLightChecked" FontSize="{DynamicResource BodyFontSize}" FontWeight="{DynamicResource NormalFontWeight}" />
+                                    <RadioButton x:Name="ThemeDarkRadio" Content="{Binding L[Settings_Appearance_Dark]}" GroupName="ThemeModeGroup" IsCheckedChanged="OnThemeDarkChecked" FontSize="{DynamicResource BodyFontSize}" FontWeight="{DynamicResource NormalFontWeight}" />
                                 </StackPanel>
                             </StackPanel>
                         </Border>

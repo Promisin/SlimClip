@@ -80,6 +80,7 @@ public class ClipboardHistory : IClipboardHistory
 
                     CREATE INDEX IF NOT EXISTS idx_clipboard_sort ON clipboard_history(copied_at DESC);
                     CREATE INDEX IF NOT EXISTS idx_clipboard_favorite ON clipboard_history(is_favorite, copied_at DESC);
+                    CREATE INDEX IF NOT EXISTS idx_clipboard_type ON clipboard_history(type, copied_at DESC);
                     CREATE INDEX IF NOT EXISTS idx_clipboard_hash ON clipboard_history(image_hash) WHERE image_hash IS NOT NULL;
                 ";
                 await cmd.ExecuteNonQueryAsync();
@@ -356,6 +357,110 @@ public class ClipboardHistory : IClipboardHistory
             }
 
             return list;
+        }
+        finally
+        {
+            _lock.Release();
+        }
+    }
+
+    public async Task<List<ClipboardItem>> GetPagedItemsAsync(
+        int limit, 
+        int offset, 
+        ClipboardType? type = null, 
+        bool favoriteOnly = false, 
+        string? searchText = null, 
+        CancellationToken cancellationToken = default)
+    {
+        await _lock.WaitAsync(cancellationToken);
+        try
+        {
+            var list = new List<ClipboardItem>();
+            await using var conn = new SqliteConnection(_connectionString);
+            await conn.OpenAsync(cancellationToken);
+
+            var sb = new System.Text.StringBuilder(@"
+                SELECT id, text, preview, type, copied_at, is_favorite,
+                       image_path, image_width, image_height, image_hash, file_paths
+                FROM clipboard_history
+                WHERE 1=1
+            ");
+
+            await using var cmd = conn.CreateCommand();
+
+            if (favoriteOnly)
+            {
+                sb.Append(" AND is_favorite = 1");
+            }
+
+            if (type.HasValue)
+            {
+                sb.Append(" AND type = @type");
+                cmd.Parameters.AddWithValue("@type", (int)type.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(searchText))
+            {
+                sb.Append(" AND (text LIKE @search OR preview LIKE @search)");
+                cmd.Parameters.AddWithValue("@search", $"%{searchText.Trim()}%");
+            }
+
+            sb.Append(" ORDER BY copied_at DESC LIMIT @limit OFFSET @offset;");
+            cmd.Parameters.AddWithValue("@limit", limit);
+            cmd.Parameters.AddWithValue("@offset", offset);
+            cmd.CommandText = sb.ToString();
+
+            await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                var item = new ClipboardItem
+                {
+                    Id = reader.GetString(0),
+                    Text = reader.GetString(1),
+                    Preview = reader.IsDBNull(2) ? string.Empty : reader.GetString(2),
+                    HtmlContent = null,
+                    RtfContent = null,
+                    Type = (ClipboardType)reader.GetInt32(3),
+                    CopiedAt = DateTime.TryParse(reader.GetString(4), null, DateTimeStyles.RoundtripKind, out var dt) ? dt : DateTime.Now,
+                    IsFavorite = reader.GetInt32(5) == 1,
+                    ImagePath = reader.IsDBNull(6) ? null : reader.GetString(6),
+                    ImageWidth = reader.IsDBNull(7) ? 0 : reader.GetInt32(7),
+                    ImageHeight = reader.IsDBNull(8) ? 0 : reader.GetInt32(8),
+                    ImageHash = reader.IsDBNull(9) ? null : reader.GetString(9),
+                    FilePaths = reader.IsDBNull(10) ? null : reader.GetString(10)
+                };
+                list.Add(item);
+            }
+
+            return list;
+        }
+        finally
+        {
+            _lock.Release();
+        }
+    }
+
+    public async Task<(string? HtmlContent, string? RtfContent)> GetItemContentAsync(string id, CancellationToken cancellationToken = default)
+    {
+        await _lock.WaitAsync(cancellationToken);
+        try
+        {
+            await using var conn = new SqliteConnection(_connectionString);
+            await conn.OpenAsync(cancellationToken);
+
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT html_content, rtf_content FROM clipboard_history WHERE id = @id LIMIT 1;";
+            cmd.Parameters.AddWithValue("@id", id);
+
+            await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+            if (await reader.ReadAsync(cancellationToken))
+            {
+                var html = reader.IsDBNull(0) ? null : reader.GetString(0);
+                var rtf = reader.IsDBNull(1) ? null : reader.GetString(1);
+                return (html, rtf);
+            }
+
+            return (null, null);
         }
         finally
         {

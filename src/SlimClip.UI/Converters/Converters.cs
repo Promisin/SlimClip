@@ -25,6 +25,35 @@ public class ClipboardTypeToVisibilityConverter : IValueConverter
 
 public class ImagePathToBitmapConverter : IValueConverter
 {
+    private const int MaxCacheSize = 100;
+    private const int TargetThumbnailWidth = 360;
+    private const int TargetThumbnailHeight = 220;
+
+    private sealed class CacheEntry
+    {
+        public required string Path { get; init; }
+        public required DateTime LastWriteTimeUtc { get; init; }
+        public required Bitmap Bitmap { get; init; }
+    }
+
+    private static readonly System.Collections.Generic.Dictionary<string, System.Collections.Generic.LinkedListNode<CacheEntry>> _cache =
+        new(StringComparer.OrdinalIgnoreCase);
+    private static readonly System.Collections.Generic.LinkedList<CacheEntry> _lruList = new();
+    private static readonly object _syncLock = new();
+
+    public static void ClearCache()
+    {
+        lock (_syncLock)
+        {
+            foreach (var node in _cache.Values)
+            {
+                try { node.Value.Bitmap.Dispose(); } catch { }
+            }
+            _cache.Clear();
+            _lruList.Clear();
+        }
+    }
+
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value is string path && !string.IsNullOrWhiteSpace(path))
@@ -32,19 +61,114 @@ public class ImagePathToBitmapConverter : IValueConverter
             var resolvedPath = ResolveImagePath(path);
             if (resolvedPath != null && File.Exists(resolvedPath))
             {
+                // 1. Fast path: check LRU cache
+                lock (_syncLock)
+                {
+                    if (_cache.TryGetValue(resolvedPath, out var node))
+                    {
+                        DateTime lastWrite = DateTime.MinValue;
+                        try { lastWrite = File.GetLastWriteTimeUtc(resolvedPath); } catch { }
+
+                        if (lastWrite == node.Value.LastWriteTimeUtc)
+                        {
+                            _lruList.Remove(node);
+                            _lruList.AddFirst(node);
+                            return node.Value.Bitmap;
+                        }
+
+                        // Stale entry: remove from cache
+                        _lruList.Remove(node);
+                        _cache.Remove(resolvedPath);
+                        try { node.Value.Bitmap.Dispose(); } catch { }
+                    }
+                }
+
+                // 2. Decode thumbnail
+                Bitmap? bitmap = null;
                 try
                 {
-                    using var stream = File.OpenRead(resolvedPath);
-                    return new Bitmap(stream);
+                    bitmap = LoadThumbnail(resolvedPath);
                 }
                 catch
                 {
-                    // Fall back to null if decoding fails
+                    return null;
+                }
+
+                if (bitmap == null) return null;
+
+                // 3. Store in LRU cache
+                lock (_syncLock)
+                {
+                    if (_cache.TryGetValue(resolvedPath, out var existingNode))
+                    {
+                        bitmap.Dispose();
+                        _lruList.Remove(existingNode);
+                        _lruList.AddFirst(existingNode);
+                        return existingNode.Value.Bitmap;
+                    }
+
+                    while (_lruList.Count >= MaxCacheSize)
+                    {
+                        var oldest = _lruList.Last;
+                        if (oldest == null) break;
+                        _lruList.RemoveLast();
+                        _cache.Remove(oldest.Value.Path);
+                        try { oldest.Value.Bitmap.Dispose(); } catch { }
+                    }
+
+                    DateTime lastWrite = DateTime.MinValue;
+                    try { lastWrite = File.GetLastWriteTimeUtc(resolvedPath); } catch { }
+
+                    var entry = new CacheEntry
+                    {
+                        Path = resolvedPath,
+                        LastWriteTimeUtc = lastWrite,
+                        Bitmap = bitmap
+                    };
+                    var newNode = new System.Collections.Generic.LinkedListNode<CacheEntry>(entry);
+                    _lruList.AddFirst(newNode);
+                    _cache[resolvedPath] = newNode;
+                    return bitmap;
                 }
             }
         }
 
         return null;
+    }
+
+    private static Bitmap? LoadThumbnail(string path)
+    {
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        var dims = ImageHeaderHelper.TryReadDimensions(stream);
+
+        if (dims.HasValue)
+        {
+            var (w, h) = dims.Value;
+            if (w <= TargetThumbnailWidth && h <= TargetThumbnailHeight)
+            {
+                return new Bitmap(stream);
+            }
+
+            // Bound by height if aspect ratio is narrower/taller than target box
+            if ((double)w / h < (double)TargetThumbnailWidth / TargetThumbnailHeight)
+            {
+                return Bitmap.DecodeToHeight(stream, TargetThumbnailHeight);
+            }
+            else
+            {
+                return Bitmap.DecodeToWidth(stream, TargetThumbnailWidth);
+            }
+        }
+
+        try
+        {
+            return Bitmap.DecodeToWidth(stream, TargetThumbnailWidth);
+        }
+        catch
+        {
+            stream.Position = 0;
+            return new Bitmap(stream);
+        }
     }
 
     public static string? ResolveImagePath(string path)

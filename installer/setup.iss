@@ -13,7 +13,7 @@
 #define MyAppExeName "SlimClip.exe"
 
 #ifndef MyAppVersion
-  #define MyAppVersion "1.0.3"
+  #define MyAppVersion "1.0.4"
 #endif
 
 #ifndef SourceDir

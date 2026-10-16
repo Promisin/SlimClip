@@ -37,7 +37,7 @@ public partial class ClipboardPanel : Window
     public ClipboardPanel()
     {
         InitializeComponent();
-        Avalonia.Media.RenderOptions.SetTextRenderingMode(this, Avalonia.Media.TextRenderingMode.SubpixelAntialias);
+        Avalonia.Media.TextOptions.SetTextRenderingMode(this, Avalonia.Media.TextRenderingMode.SubpixelAntialias);
 
         var tabBar = this.FindControl<SlimClip.UI.Controls.UnderlineTabBar>("FilterTabBar");
         if (tabBar != null && string.IsNullOrEmpty(tabBar.SelectedValue))
@@ -56,6 +56,13 @@ public partial class ClipboardPanel : Window
 
         viewModel.ConfirmMissingFiles += OnConfirmMissingFiles;
         viewModel.PropertyChanged += OnViewModelPropertyChanged;
+        viewModel.RequestScrollToHome += OnRequestScrollToHome;
+
+        var listBox = this.FindControl<ListBox>("ItemsListBox");
+        if (listBox != null)
+        {
+            listBox.AddHandler(ScrollViewer.ScrollChangedEvent, OnListScrollChanged);
+        }
 
         var header = this.FindControl<Border>("HeaderBorder");
         if (header != null)
@@ -112,12 +119,9 @@ public partial class ClipboardPanel : Window
         if (DataContext is MainViewModel vm)
         {
             vm.ResetState();
-            if (vm.SelectedItem != null)
-            {
-                var listBox = this.FindControl<ListBox>("ItemsListBox");
-                listBox?.ScrollIntoView(vm.SelectedItem);
-            }
         }
+
+        ResetListScrollHome();
 
         Show();
         Activate();
@@ -131,6 +135,8 @@ public partial class ClipboardPanel : Window
         }
 
         FocusSearchBox();
+
+        Avalonia.Threading.Dispatcher.UIThread.Post(ResetListScrollHome, Avalonia.Threading.DispatcherPriority.Loaded);
     }
 
     public void FocusSearchBox()
@@ -355,6 +361,53 @@ public partial class ClipboardPanel : Window
         if (e.Source == sender && DataContext is MainViewModel vm && vm.IsEditingItem)
         {
             vm.CancelEditItemCommand.Execute(null);
+        }
+    }
+
+    private void ResetListScrollHome()
+    {
+        var listBox = this.FindControl<ListBox>("ItemsListBox");
+        if (listBox != null)
+        {
+            var scrollViewer = listBox.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
+            if (scrollViewer != null)
+            {
+                scrollViewer.Offset = new Vector(0, 0);
+            }
+            if (DataContext is MainViewModel vm && vm.Items.Count > 0)
+            {
+                if (vm.SelectedItem == null || vm.SelectedItem != vm.Items[0])
+                {
+                    vm.SelectedItem = vm.Items[0];
+                }
+            }
+        }
+    }
+
+    private void OnRequestScrollToHome()
+    {
+        Avalonia.Threading.Dispatcher.UIThread.Post(ResetListScrollHome, Avalonia.Threading.DispatcherPriority.Loaded);
+    }
+
+    private void OnListScrollChanged(object? sender, ScrollChangedEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm || !vm.HasMoreItems || vm.IsLoadingMore)
+            return;
+
+        if (sender is ListBox listBox)
+        {
+            var scrollViewer = listBox.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
+            if (scrollViewer != null)
+            {
+                var extent = scrollViewer.Extent.Height;
+                var viewport = scrollViewer.Viewport.Height;
+                var offset = scrollViewer.Offset.Y;
+
+                if (extent > 0 && offset + viewport >= extent - 200)
+                {
+                    _ = vm.LoadNextPageAsync();
+                }
+            }
         }
     }
 }

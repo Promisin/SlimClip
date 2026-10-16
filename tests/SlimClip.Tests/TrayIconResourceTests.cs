@@ -13,6 +13,7 @@ public class TrayIconResourceTests
     public void AssetLoader_ShouldFindTrayIcon_InCorrectAssembly()
     {
         StyleTests.EnsureHeadlessApp();
+        _ = typeof(SlimClip.Desktop.App).Assembly;
 
         var oldTrayUri = new Uri("avares://SlimClip.Desktop/Assets/icon_tray.ico");
         var oldAppUri = new Uri("avares://SlimClip.Desktop/Assets/app.ico");

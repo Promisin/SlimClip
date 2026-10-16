@@ -6,9 +6,7 @@
              x:Class="SlimClip.UI.Controls.AppIcon"
              Width="{Binding $self.Size}"
              Height="{Binding $self.Size}">
-    <Viewbox Width="{Binding $self.Size}"
-             Height="{Binding $self.Size}"
-             HorizontalAlignment="Center"
+    <Viewbox HorizontalAlignment="Center"
              VerticalAlignment="Center"
              Stretch="Uniform">
         <Canvas Width="24" Height="24" ClipToBounds="False">
