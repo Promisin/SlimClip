@@ -23,6 +23,9 @@ public class MacHotkeyService : IHotkeyService
 #pragma warning restore CS0067, CS0414
     private bool _isDisposed;
     private long _lastTriggerTick;
+    public HotkeyRegistrationStatus LastRegistrationStatus { get; private set; } = HotkeyRegistrationStatus.Success;
+    public void ConfigureSystemHotkeyOverride(bool allowOverride, string? initialManagedChar = null, Action<string>? onManagedCharChanged = null) { }
+    public bool RestartExplorerAndReRegister() => false;
 
     public void StartRecording()
     {

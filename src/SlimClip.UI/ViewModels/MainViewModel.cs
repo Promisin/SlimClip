@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -205,8 +206,13 @@ public partial class MainViewModel : ObservableObject
         await RefreshFilteredListAsync();
     }
 
+    private bool _suppressAutoRefresh;
+
     partial void OnSearchTextChanged(string value)
     {
+        if (_suppressAutoRefresh)
+            return;
+
         if (SearchDebounceMs <= 0)
         {
             RefreshFilteredList();
@@ -239,6 +245,9 @@ public partial class MainViewModel : ObservableObject
 
     partial void OnCurrentFilterTypeChanged(string value)
     {
+        if (_suppressAutoRefresh)
+            return;
+
         RefreshFilteredList();
     }
 
@@ -280,6 +289,14 @@ public partial class MainViewModel : ObservableObject
                 else
                 {
                     Items.Insert(0, recorded);
+                    _currentOffset++;
+                    // 若当前处于第一页浏览状态，保持内存列表不超过 PageSize，避免后台持续复制导致 UI 容器无限增长
+                    if (_currentOffset == PageSize + 1 && Items.Count > PageSize)
+                    {
+                        Items.RemoveAt(Items.Count - 1);
+                        _currentOffset = PageSize;
+                        HasMoreItems = true;
+                    }
                 }
 
                 HasItems = Items.Count > 0;
@@ -297,10 +314,45 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
+    public void TrimToFirstPageIfNeeded()
+    {
+        if (Items.Count > PageSize)
+        {
+            while (Items.Count > PageSize)
+            {
+                Items.RemoveAt(Items.Count - 1);
+            }
+            _currentOffset = PageSize;
+            HasMoreItems = true;
+        }
+    }
+
     public void ResetState()
     {
-        SearchText = string.Empty;
-        CurrentFilterType = "All";
+        bool needsFilterOrSearchReset = !string.IsNullOrEmpty(SearchText) || CurrentFilterType != "All";
+        if (!needsFilterOrSearchReset)
+        {
+            TrimToFirstPageIfNeeded();
+            foreach (var item in Items)
+            {
+                item.NotifyCopiedAtChanged();
+            }
+            SelectedItem = Items.FirstOrDefault();
+            RequestScrollToHome?.Invoke();
+            return;
+        }
+
+        _searchCts?.Cancel();
+        _suppressAutoRefresh = true;
+        try
+        {
+            SearchText = string.Empty;
+            CurrentFilterType = "All";
+        }
+        finally
+        {
+            _suppressAutoRefresh = false;
+        }
         RefreshFilteredList();
         SelectedItem = Items.FirstOrDefault();
     }

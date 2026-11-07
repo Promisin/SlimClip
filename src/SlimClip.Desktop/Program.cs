@@ -1,4 +1,7 @@
 using System;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using Avalonia;
@@ -11,42 +14,53 @@ internal static class Program
 {
     private static Mutex? _singleInstanceMutex;
 
-    // Initialization code. Don't use any Avalonia, third-party APIs or any
-    // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
-    // yet and stuff might break.
     [STAThread]
     public static void Main(string[] args)
     {
-        // 尽早设置 macOS ActivationPolicy 为 Accessory (1)
-        // 确保无论是裸二进制 (dotnet run) 还是打包 App，均不在 Dock 栏显示与占位
         if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
         {
             SlimClip.Platform.MacOS.MacLiquidGlassHelper.ConfigureAccessoryApp();
         }
 
-        var mutexName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-            ? @"Local\SlimClip_SingleInstance_Mutex"
-            : "SlimClip_SingleInstance_Mutex";
-        bool acquired = false;
-        try
+        bool isSetupOrUninstall = args.Any(a =>
+            string.Equals(a, "--setup", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(a, "--uninstall", StringComparison.OrdinalIgnoreCase));
+
+        // 卸载模式下，若当前进程位于被卸载目录，先复制到 %TEMP% 接力执行以释放安装目录文件锁
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) &&
+            args.Any(a => string.Equals(a, "--uninstall", StringComparison.OrdinalIgnoreCase)) &&
+            !args.Any(a => string.Equals(a, "--temp-relaunch", StringComparison.OrdinalIgnoreCase)))
         {
-            _singleInstanceMutex = new Mutex(true, mutexName, out bool createdNew);
-            acquired = createdNew;
-            if (!acquired)
+            if (TryRelaunchUninstallerFromTemp())
             {
-                // Wait briefly (up to 2s) in case previous instance is exiting during restart / elevation
-                acquired = _singleInstanceMutex.WaitOne(TimeSpan.FromSeconds(2), false);
+                return;
             }
         }
-        catch (AbandonedMutexException)
-        {
-            acquired = true;
-        }
 
-        if (!acquired)
+        if (!isSetupOrUninstall)
         {
-            // Another instance is already running
-            return;
+            var mutexName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+                ? @"Local\SlimClip_SingleInstance_Mutex"
+                : "SlimClip_SingleInstance_Mutex";
+            bool acquired = false;
+            try
+            {
+                _singleInstanceMutex = new Mutex(true, mutexName, out bool createdNew);
+                acquired = createdNew;
+                if (!acquired)
+                {
+                    acquired = _singleInstanceMutex.WaitOne(TimeSpan.FromSeconds(2), false);
+                }
+            }
+            catch (AbandonedMutexException)
+            {
+                acquired = true;
+            }
+
+            if (!acquired)
+            {
+                return;
+            }
         }
 
         try
@@ -60,15 +74,37 @@ internal static class Program
             {
                 _singleInstanceMutex?.ReleaseMutex();
             }
-            catch
-            {
-                // Ignored if mutex was abandoned or already released
-            }
+            catch { }
             _singleInstanceMutex?.Dispose();
         }
     }
 
-    // Avalonia configuration, don't remove; also used by visual designer.
+    private static bool TryRelaunchUninstallerFromTemp()
+    {
+        try
+        {
+            var exePath = Environment.ProcessPath;
+            if (string.IsNullOrEmpty(exePath) || !File.Exists(exePath))
+                return false;
+
+            var installDir = Path.GetDirectoryName(exePath) ?? string.Empty;
+            var tempUninstaller = Path.Combine(Path.GetTempPath(), $"SlimClip_Uninstall_{Guid.NewGuid():N}.exe");
+            File.Copy(exePath, tempUninstaller, overwrite: true);
+
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = tempUninstaller,
+                Arguments = $"--uninstall --temp-relaunch --source \"{installDir}\"",
+                UseShellExecute = true
+            });
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public static AppBuilder BuildAvaloniaApp()
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()

@@ -639,6 +639,41 @@
             <Setter Property="Background" Value="{DynamicResource CardSelectedBrush}" />
             <Setter Property="Opacity" Value="0.85" />
         </Style>
+        <!-- Direct Hotkey Recorder Box -->
+        <Style Selector="Button.DirectHotkeyRecorder">
+            <Setter Property="FocusAdorner" Value="{x:Null}" />
+            <Setter Property="Background" Value="{DynamicResource SearchBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SearchBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="{DynamicResource SearchBoxCornerRadius}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="FontWeight" Value="{DynamicResource TitleFontWeight}" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Padding" Value="14,8" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Button.DirectHotkeyRecorder:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource CardHoverBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource TextSecondaryBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+        </Style>
+        <Style Selector="Button.DirectHotkeyRecorder.recording">
+            <Setter Property="BorderBrush" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="Background" Value="{DynamicResource CardSelectedBrush}" />
+        </Style>
+        <Style Selector="Button.DirectHotkeyRecorder.recording /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="Background" Value="{DynamicResource CardSelectedBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+        </Style>
+        <Style Selector="TextBlock.HotkeyStatusText">
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+        </Style>
+        <Style Selector="TextBlock.HotkeyStatusText.error">
+            <Setter Property="Foreground" Value="{DynamicResource EmberBrush}" />
+        </Style>
     </Window.Styles>
 
     <Panel>
@@ -791,31 +826,15 @@
                                 <TextBlock Text="{Binding L[Settings_Hotkey_Title]}" FontSize="{DynamicResource SectionTitleFontSize}" FontWeight="{DynamicResource BodyFontWeight}" Foreground="{DynamicResource TextPrimaryBrush}" />
                                 <TextBlock Text="{Binding L[Settings_Hotkey_Desc]}" FontSize="{DynamicResource SubBodyFontSize}" Foreground="{DynamicResource TextSecondaryBrush}" />
 
-                                <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,8,0,0">
-                                    <Border Grid.Column="0"
-                                            Background="{DynamicResource SearchBackground}"
-                                            CornerRadius="{DynamicResource SearchBoxCornerRadius}"
-                                            BorderBrush="{DynamicResource SearchBorderBrush}"
-                                            BorderThickness="1"
-                                            Padding="12,8">
-                                        <TextBlock Text="{Binding HotkeyDisplay}"
-                                                   FontWeight="{DynamicResource TitleFontWeight}"
-                                                   Foreground="{DynamicResource TextPrimaryBrush}"
-                                                   VerticalAlignment="Center" />
-                                    </Border>
+                                <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
+                                    <Button x:Name="HotkeyRecorderBox"
+                                            Grid.Column="0"
+                                            Classes="DirectHotkeyRecorder"
+                                            Classes.recording="{Binding IsRecordingHotkey}"
+                                            Content="{Binding HotkeyBoxText}"
+                                            Command="{Binding ToggleRecordingHotkeyCommand}" />
 
                                     <Button Grid.Column="1"
-                                            Content="{Binding RecordHotkeyButtonText}"
-                                            Command="{Binding StartRecordingHotkeyCommand}"
-                                            Background="{DynamicResource SearchBackground}"
-                                            BorderBrush="{DynamicResource HairlineBrush}"
-                                            BorderThickness="1"
-                                            Foreground="{DynamicResource TextPrimaryBrush}"
-                                            CornerRadius="{DynamicResource KeyHintCornerRadius}"
-                                            Margin="8,0,0,0"
-                                            Padding="14,8" />
-
-                                    <Button Grid.Column="2"
                                             Content="{Binding L[Settings_Hotkey_Reset]}"
                                             Command="{Binding ResetHotkeyDefaultCommand}"
                                             Background="{DynamicResource SearchBackground}"
@@ -824,8 +843,89 @@
                                             Foreground="{DynamicResource TextSecondaryBrush}"
                                             CornerRadius="{DynamicResource KeyHintCornerRadius}"
                                             Margin="8,0,0,0"
-                                            Padding="12,8" />
+                                            Padding="12,8"
+                                            Cursor="Hand" />
                                 </Grid>
+
+                                <!-- Immediate Hotkey Registration Status & Restart Explorer Action -->
+                                <Grid ColumnDefinitions="*,Auto"
+                                      IsVisible="{Binding HasHotkeyStatusMessage}"
+                                      Margin="2,2,0,0">
+                                    <TextBlock Grid.Column="0"
+                                               Classes="HotkeyStatusText"
+                                               Classes.error="{Binding IsHotkeyErrorStatus}"
+                                               Text="{Binding HotkeyStatusMessage}"
+                                               FontSize="{DynamicResource CaptionFontSize}"
+                                               TextWrapping="Wrap"
+                                               VerticalAlignment="Center" />
+                                    <Button Grid.Column="1"
+                                            IsVisible="{Binding NeedsExplorerRestart}"
+                                            Content="{Binding L[Settings_Hotkey_RestartExplorer]}"
+                                            Command="{Binding RestartExplorerCommand}"
+                                            Background="{DynamicResource ActiveChipBackground}"
+                                            Foreground="{DynamicResource ActiveChipForeground}"
+                                            BorderThickness="0"
+                                            CornerRadius="{DynamicResource KeyHintCornerRadius}"
+                                            Padding="12,6"
+                                            Margin="8,0,0,0"
+                                            FontSize="{DynamicResource CaptionFontSize}"
+                                            FontWeight="{DynamicResource BodyFontWeight}"
+                                            VerticalAlignment="Center"
+                                            Cursor="Hand" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Windows System Hotkey Override Mode Card -->
+                        <Border IsVisible="{Binding IsWindows}"
+                                Background="{DynamicResource CardBackground}"
+                                BorderBrush="{DynamicResource CardBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{DynamicResource ItemCardCornerRadius}"
+                                Padding="16,14">
+                            <StackPanel Spacing="12">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel Grid.Column="0" Spacing="2">
+                                        <TextBlock Text="{Binding L[Settings_Hotkey_Override_Title]}"
+                                                   FontSize="{DynamicResource SectionTitleFontSize}"
+                                                   FontWeight="{DynamicResource BodyFontWeight}"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}" />
+                                        <TextBlock Text="{Binding L[Settings_Hotkey_Override_Desc]}"
+                                                   FontSize="{DynamicResource SubBodyFontSize}"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
+                                    <ToggleSwitch x:Name="AllowDisableSystemHotkeysToggle"
+                                                  Grid.Column="1"
+                                                  IsChecked="{Binding AllowDisableSystemHotkeys, Mode=TwoWay}"
+                                                  OnContent="" OffContent=""
+                                                  VerticalAlignment="Top" />
+                                </Grid>
+
+                                <Rectangle Height="1" Fill="{DynamicResource DividerBrush}" />
+
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="{Binding L[Settings_Hotkey_Override_TheoryTitle]}"
+                                               FontSize="{DynamicResource CaptionFontSize}"
+                                               FontWeight="{DynamicResource TitleFontWeight}"
+                                               Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    <TextBlock Text="{Binding L[Settings_Hotkey_Override_Theory1]}"
+                                               FontSize="{DynamicResource CaptionFontSize}"
+                                               Foreground="{DynamicResource TextTertiaryBrush}"
+                                               TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding L[Settings_Hotkey_Override_Theory2]}"
+                                               FontSize="{DynamicResource CaptionFontSize}"
+                                               Foreground="{DynamicResource TextTertiaryBrush}"
+                                               TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding L[Settings_Hotkey_Override_Theory3]}"
+                                               FontSize="{DynamicResource CaptionFontSize}"
+                                               Foreground="{DynamicResource TextTertiaryBrush}"
+                                               TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding L[Settings_Hotkey_Override_Theory4]}"
+                                               FontSize="{DynamicResource CaptionFontSize}"
+                                               Foreground="{DynamicResource TextTertiaryBrush}"
+                                               TextWrapping="Wrap" />
+                                </StackPanel>
                             </StackPanel>
                         </Border>
 

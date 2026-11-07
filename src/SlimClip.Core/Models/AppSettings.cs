@@ -22,6 +22,8 @@ public class AppSettings
     public AppThemeMode ThemeMode { get; set; } = AppThemeMode.System;
     public string Language { get; set; } = string.Empty;
     public int PasteDelayMs { get; set; } = RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ? 80 : 60;
+    public bool AllowDisableSystemHotkeys { get; set; }
+    public string ManagedDisabledHotkeyChar { get; set; } = string.Empty;
     public int SettingsWindowX { get; set; }
     public int SettingsWindowY { get; set; }
     public int SettingsWindowWidth { get; set; } = 560;

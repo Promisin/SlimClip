@@ -10,6 +10,7 @@ using Avalonia.VisualTree;
 using SlimClip.Core.Models;
 using SlimClip.Core.Services;
 using SlimClip.UI.Animation;
+using SlimClip.UI.Helpers;
 using SlimClip.UI.ViewModels;
 
 namespace SlimClip.UI.Views;
@@ -32,6 +33,7 @@ public partial class ClipboardPanel : Window
             _windowActivationService.RestoreForegroundWindow(PreviousForegroundHandle);
             PreviousForegroundHandle = IntPtr.Zero;
         }
+        MemoryTrimHelper.ScheduleBackgroundTrim(DataContext as MainViewModel);
     }
 
     public ClipboardPanel()
@@ -83,6 +85,7 @@ public partial class ClipboardPanel : Window
                 _isClosing = true;
                 Hide();
                 PreviousForegroundHandle = IntPtr.Zero;
+                MemoryTrimHelper.ScheduleBackgroundTrim(DataContext as MainViewModel);
             }
         };
 
@@ -113,6 +116,7 @@ public partial class ClipboardPanel : Window
 
     public void ShowPanel()
     {
+        MemoryTrimHelper.CancelPendingTrim();
         _isClosing = false;
         _isSettingsOpened = false;
 
@@ -307,6 +311,7 @@ public partial class ClipboardPanel : Window
             PreviousForegroundHandle = IntPtr.Zero;
             Hide();
             await vm.PasteSelectedCommand.ExecuteAsync(null);
+            MemoryTrimHelper.ScheduleBackgroundTrim(vm);
         }
     }
 

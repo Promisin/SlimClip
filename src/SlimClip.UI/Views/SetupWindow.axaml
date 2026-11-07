@@ -1,0 +1,341 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:SlimClip.UI.ViewModels;assembly=SlimClip.UI"
+        xmlns:controls="clr-namespace:SlimClip.UI.Controls;assembly=SlimClip.UI"
+        x:Class="SlimClip.UI.Views.SetupWindow"
+        x:DataType="vm:SetupViewModel"
+        Title="{Binding L[Setup_Title]}"
+        Width="540"
+        Height="400"
+        MinWidth="540"
+        MinHeight="400"
+        MaxWidth="540"
+        MaxHeight="400"
+        CanResize="False"
+        WindowStartupLocation="CenterScreen"
+        ExtendClientAreaToDecorationsHint="True"
+        WindowDecorations="BorderOnly"
+        ExtendClientAreaTitleBarHeightHint="-1"
+        TransparencyLevelHint="AcrylicBlur,Blur,Transparent"
+        Background="Transparent"
+        Foreground="{DynamicResource TextPrimaryBrush}"
+        FontFamily="{DynamicResource PrimaryFontFamily}"
+        FontWeight="{DynamicResource NormalFontWeight}"
+        UseLayoutRounding="True">
+
+    <Window.Styles>
+        <Style Selector="TextBlock">
+            <Setter Property="FontWeight" Value="{DynamicResource NormalFontWeight}" />
+        </Style>
+
+        <!-- Monochrome Blueprint CheckBox -->
+        <Style Selector="CheckBox">
+            <Setter Property="FocusAdorner" Value="{x:Null}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="FontSize" Value="{DynamicResource SubBodyFontSize}" />
+            <Setter Property="FontWeight" Value="{DynamicResource NormalFontWeight}" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="CheckBox:checked /template/ Border#NormalRectangle">
+            <Setter Property="Background" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ActiveChipBackground}" />
+        </Style>
+        <Style Selector="CheckBox:checked /template/ Path#CheckGlyph">
+            <Setter Property="Fill" Value="{DynamicResource ActiveChipForeground}" />
+        </Style>
+
+        <!-- Primary Action Button (Black & White as Anchor) -->
+        <Style Selector="Button.SetupPrimaryAction">
+            <Setter Property="FocusAdorner" Value="{x:Null}" />
+            <Setter Property="Background" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="Foreground" Value="{DynamicResource ActiveChipForeground}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Height" Value="42" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="FontSize" Value="{DynamicResource BodyFontSize}" />
+            <Setter Property="FontWeight" Value="{DynamicResource TitleFontWeight}" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Button.SetupPrimaryAction:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="Foreground" Value="{DynamicResource ActiveChipForeground}" />
+            <Setter Property="Opacity" Value="0.9" />
+        </Style>
+        <Style Selector="Button.SetupPrimaryAction:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="Foreground" Value="{DynamicResource ActiveChipForeground}" />
+            <Setter Property="Opacity" Value="0.8" />
+        </Style>
+
+        <!-- Secondary Action Button (Browse) -->
+        <Style Selector="Button.SetupSecondaryButton">
+            <Setter Property="FocusAdorner" Value="{x:Null}" />
+            <Setter Property="Background" Value="{DynamicResource SearchBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SearchBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="FontSize" Value="{DynamicResource SubBodyFontSize}" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Button.SetupSecondaryButton:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource CardHoverBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource TextSecondaryBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+        </Style>
+
+        <!-- Path Input Box -->
+        <Style Selector="TextBox.SetupPathInput">
+            <Setter Property="FocusAdorner" Value="{x:Null}" />
+            <Setter Property="Background" Value="{DynamicResource SearchBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SearchBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="FontSize" Value="{DynamicResource SubBodyFontSize}" />
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="TextBox.SetupPathInput:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{DynamicResource SearchBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="TextBox.SetupPathInput[IsReadOnly=True]">
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+            <Setter Property="Opacity" Value="0.88" />
+        </Style>
+    </Window.Styles>
+
+    <Border Background="{DynamicResource SurfaceBackground}"
+            CornerRadius="{DynamicResource WindowCornerRadius}"
+            BorderBrush="{DynamicResource WindowBorderBrush}"
+            BorderThickness="{DynamicResource WindowBorderThickness}"
+            ClipToBounds="True">
+        <Grid RowDefinitions="Auto,*,Auto">
+
+            <!-- 1. Custom Frameless Header Bar -->
+            <Border x:Name="TitleBar" Grid.Row="0" Padding="18,12,12,6" Background="Transparent">
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Grid.Column="0"
+                               Text="{Binding L[Setup_Title]}"
+                               FontSize="{DynamicResource SubBodyFontSize}"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               VerticalAlignment="Center" />
+                    <controls:IconButton Grid.Column="1"
+                                         IconKind="Close"
+                                         IconSize="13"
+                                         IsEnabled="{Binding !IsInstallingStage}"
+                                         ToolTipText="{Binding L[Dialog_Close]}"
+                                         Click="OnCloseClicked" />
+                </Grid>
+            </Border>
+
+            <!-- 2. Main Hero & Stage Body -->
+            <Grid Grid.Row="1" Margin="36,4,36,0" RowDefinitions="Auto,*">
+
+                <!-- Brand Hero Section -->
+                <StackPanel Grid.Row="0" Spacing="8" HorizontalAlignment="Center">
+                    <Border Background="{DynamicResource PaperBrush}"
+                            BorderBrush="{DynamicResource CardBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="14"
+                            Width="56"
+                            Height="56"
+                            HorizontalAlignment="Center"
+                            BoxShadow="0 4 14 #20000000">
+                        <Image Source="avares://SlimClip.UI/Assets/app.png"
+                               Width="46"
+                               Height="46"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center" />
+                    </Border>
+
+                    <StackPanel Spacing="3" HorizontalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <TextBlock Text="SlimClip"
+                                       FontSize="{DynamicResource AppTitleFontSize}"
+                                       FontWeight="{DynamicResource AppTitleFontWeight}"
+                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+                            <Border Background="{DynamicResource ActiveChipBackground}"
+                                    CornerRadius="4"
+                                    Padding="6,1"
+                                    VerticalAlignment="Center">
+                                <TextBlock Text="{Binding AppVersion}"
+                                           FontSize="{DynamicResource CaptionFontSize}"
+                                           FontWeight="{DynamicResource TitleFontWeight}"
+                                           Foreground="{DynamicResource ActiveChipForeground}" />
+                            </Border>
+                        </StackPanel>
+                        <TextBlock Text="{Binding L[Settings_About_Slogan]}"
+                                   FontSize="{DynamicResource CaptionFontSize}"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   HorizontalAlignment="Center" />
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Stage A: Configuration (Fresh Install or Locked Upgrade) -->
+                <Border Grid.Row="1"
+                        IsVisible="{Binding IsConfigurationStage}"
+                        Background="{DynamicResource CardBackground}"
+                        BorderBrush="{DynamicResource CardBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="{DynamicResource ItemCardCornerRadius}"
+                        Padding="16,14"
+                        Margin="0,16,0,12"
+                        VerticalAlignment="Center">
+                    <StackPanel Spacing="12">
+                        <StackPanel Spacing="6">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding L[Setup_Path_Label]}"
+                                           FontSize="{DynamicResource CaptionFontSize}"
+                                           FontWeight="{DynamicResource TitleFontWeight}"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1"
+                                           IsVisible="{Binding IsUpgradeMode}"
+                                           Text="{Binding L[Setup_Path_LockedHint]}"
+                                           FontSize="{DynamicResource CaptionFontSize}"
+                                           Foreground="{DynamicResource TextTertiaryBrush}"
+                                           HorizontalAlignment="Right"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBox x:Name="InstallPathTextBox"
+                                         Grid.Column="0"
+                                         Classes="SetupPathInput"
+                                         Text="{Binding InstallPath, Mode=TwoWay}"
+                                         IsReadOnly="{Binding !IsPathEditable}"
+                                         Focusable="{Binding IsPathEditable}"
+                                         LostFocus="OnInstallPathLostFocus" />
+                                <Button Grid.Column="1"
+                                        Classes="SetupSecondaryButton"
+                                        IsVisible="{Binding IsPathEditable}"
+                                        Content="{Binding L[Setup_Path_Browse]}"
+                                        Margin="8,0,0,0"
+                                        Click="OnBrowseInstallPathClicked" />
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- Fresh Install Options (Hidden in Upgrade Mode) -->
+                        <StackPanel IsVisible="{Binding ShowInstallOptions}"
+                                    Orientation="Horizontal"
+                                    Spacing="24"
+                                    Margin="2,2,0,0">
+                            <CheckBox IsChecked="{Binding EnableAutoStart, Mode=TwoWay}"
+                                      Content="{Binding L[Setup_Option_AutoStart]}" />
+                            <CheckBox IsChecked="{Binding CreateDesktopShortcut, Mode=TwoWay}"
+                                      Content="{Binding L[Setup_Option_DesktopShortcut]}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Stage B: Installing Progress -->
+                <Border Grid.Row="1"
+                        IsVisible="{Binding IsInstallingStage}"
+                        Background="{DynamicResource CardBackground}"
+                        BorderBrush="{DynamicResource CardBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="{DynamicResource ItemCardCornerRadius}"
+                        Padding="20,18"
+                        Margin="0,16,0,12"
+                        VerticalAlignment="Center">
+                    <StackPanel Spacing="12">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0"
+                                       Text="{Binding StatusText}"
+                                       FontSize="{DynamicResource SubBodyFontSize}"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"
+                                       VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding ProgressPercent, StringFormat='{}{0:0}%'}"
+                                       FontSize="{DynamicResource SubBodyFontSize}"
+                                       FontWeight="{DynamicResource TitleFontWeight}"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"
+                                       VerticalAlignment="Center" />
+                        </Grid>
+
+                        <ProgressBar Minimum="0"
+                                     Maximum="100"
+                                     Value="{Binding ProgressPercent}"
+                                     Height="8"
+                                     CornerRadius="4"
+                                     Background="{DynamicResource SearchBackground}"
+                                     Foreground="{DynamicResource ActiveChipBackground}" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Stage C: Completed -->
+                <Border Grid.Row="1"
+                        IsVisible="{Binding IsCompletedStage}"
+                        Background="{DynamicResource CardBackground}"
+                        BorderBrush="{DynamicResource CardBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="{DynamicResource ItemCardCornerRadius}"
+                        Padding="20,18"
+                        Margin="0,16,0,12"
+                        VerticalAlignment="Center">
+                    <StackPanel Spacing="6" HorizontalAlignment="Center">
+                        <TextBlock Text="{Binding CompletedTitleText}"
+                                   FontSize="{DynamicResource SectionTitleFontSize}"
+                                   FontWeight="{DynamicResource TitleFontWeight}"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                   HorizontalAlignment="Center" />
+                        <TextBlock IsVisible="{Binding !IsUninstallMode}"
+                                   Text="{Binding L[Setup_Done_Subtitle]}"
+                                   FontSize="{DynamicResource SubBodyFontSize}"
+                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                   HorizontalAlignment="Center"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Stage D: Failed -->
+                <Border Grid.Row="1"
+                        IsVisible="{Binding IsFailedStage}"
+                        Background="{DynamicResource CardBackground}"
+                        BorderBrush="{DynamicResource EmberBrush}"
+                        BorderThickness="1"
+                        CornerRadius="{DynamicResource ItemCardCornerRadius}"
+                        Padding="16,14"
+                        Margin="0,16,0,12"
+                        VerticalAlignment="Center">
+                    <TextBlock Text="{Binding ErrorMessage}"
+                               FontSize="{DynamicResource SubBodyFontSize}"
+                               Foreground="{DynamicResource EmberBrush}"
+                               TextWrapping="Wrap" />
+                </Border>
+            </Grid>
+
+            <!-- 3. Bottom Action Anchor -->
+            <Border Grid.Row="2" Padding="36,6,36,24">
+                <Panel>
+                    <Button Classes="SetupPrimaryAction"
+                            IsVisible="{Binding IsConfigurationStage}"
+                            Content="{Binding PrimaryActionText}"
+                            Command="{Binding ConfirmInstallCommand}" />
+
+                    <Button Classes="SetupPrimaryAction"
+                            IsVisible="{Binding IsCompletedStage}"
+                            Content="{Binding L[Setup_Btn_Launch]}"
+                            Command="{Binding LaunchAndExitCommand}" />
+
+                    <Button Classes="SetupPrimaryAction"
+                            IsVisible="{Binding IsFailedStage}"
+                            Content="{Binding L[Setup_Btn_Retry]}"
+                            Command="{Binding RetryConfigurationCommand}" />
+                </Panel>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

@@ -70,6 +70,13 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+#if WINDOWS
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && TryStartWindowsSetupMode(desktop))
+            {
+                base.OnFrameworkInitializationCompleted();
+                return;
+            }
+#endif
 
             var isMac = RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
             var isWin = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
@@ -177,6 +184,7 @@ public partial class App : Application
                 Avalonia.Threading.Dispatcher.UIThread.Post(ShowClipboardPanelNearAnchor);
             };
             _hotkeyService.Register(_settingsService.Settings.Hotkey);
+            _settingsViewModel.RefreshHotkeyRegistrationStatus();
 
             // 5. Tray Icon / Status Item
             SetupTrayIcon();
@@ -200,6 +208,7 @@ public partial class App : Application
             _clipboardPanel.Show();
             _clipboardPanel.Hide();
             _clipboardPanel.Opacity = 1;
+            MemoryTrimHelper.ScheduleBackgroundTrim(_mainViewModel);
         }
         catch { }
     }
@@ -249,8 +258,61 @@ public partial class App : Application
 
     public void OpenSettingsWindow() => OpenSettingsWindow(null);
 
+#if WINDOWS
+    private bool TryStartWindowsSetupMode(IClassicDesktopStyleApplicationLifetime desktop)
+    {
+        var args = desktop.Args ?? Array.Empty<string>();
+        bool isSetup = false;
+        bool isUninstall = false;
+        string? sourceDir = null;
+
+        for (int i = 0; i < args.Length; i++)
+        {
+            if (string.Equals(args[i], "--setup", StringComparison.OrdinalIgnoreCase))
+            {
+                isSetup = true;
+            }
+            else if (string.Equals(args[i], "--uninstall", StringComparison.OrdinalIgnoreCase))
+            {
+                isUninstall = true;
+            }
+            else if (string.Equals(args[i], "--source", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+            {
+                sourceDir = args[++i];
+            }
+        }
+
+        if (!isSetup && !isUninstall)
+            return false;
+
+        desktop.ShutdownMode = ShutdownMode.OnMainWindowClose;
+
+        var platformHook = new WindowsSettingsPlatformService();
+        var lang = platformHook.GetSystemPreferredLanguage() ?? string.Empty;
+        var loc = new LocalizationService(lang);
+
+        ApplyThemeMode(AppThemeMode.System);
+
+        var setupService = new WindowsSetupService(loc);
+        var vm = new SetupViewModel(setupService, sourceDir, isUninstall, loc);
+        var setupWindow = new SetupWindow(vm);
+        AttachPlatformBackdrop(setupWindow);
+
+        var appIcon = LoadAppIcon();
+        if (appIcon != null)
+        {
+            setupWindow.Icon = appIcon;
+        }
+
+        desktop.MainWindow = setupWindow;
+        setupWindow.Show();
+        return true;
+    }
+#endif
+
     public void OpenSettingsWindow(string? tab)
     {
+        MemoryTrimHelper.CancelPendingTrim();
         if (_settingsWindow == null)
         {
             _settingsWindow = new SettingsWindow(_settingsViewModel);
@@ -260,7 +322,11 @@ public partial class App : Application
             {
                 _settingsWindow.Icon = appIcon;
             }
-            _settingsWindow.Closed += (s, e) => _settingsWindow = null;
+            _settingsWindow.Closed += (s, e) =>
+            {
+                _settingsWindow = null;
+                MemoryTrimHelper.ScheduleBackgroundTrim(_mainViewModel);
+            };
         }
 
         if (!string.IsNullOrEmpty(tab))

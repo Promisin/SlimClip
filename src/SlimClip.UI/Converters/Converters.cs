@@ -25,7 +25,7 @@ public class ClipboardTypeToVisibilityConverter : IValueConverter
 
 public class ImagePathToBitmapConverter : IValueConverter
 {
-    private const int MaxCacheSize = 100;
+    private const int MaxCacheSize = 36;
     private const int TargetThumbnailWidth = 360;
     private const int TargetThumbnailHeight = 220;
 
@@ -41,16 +41,32 @@ public class ImagePathToBitmapConverter : IValueConverter
     private static readonly System.Collections.Generic.LinkedList<CacheEntry> _lruList = new();
     private static readonly object _syncLock = new();
 
-    public static void ClearCache()
+    public static int CachedCount
     {
+        get
+        {
+            lock (_syncLock)
+            {
+                return _lruList.Count;
+            }
+        }
+    }
+
+    public static void ClearCache() => TrimCache(0);
+
+    public static void TrimCache(int maxKeep = 12)
+    {
+        if (maxKeep < 0) maxKeep = 0;
         lock (_syncLock)
         {
-            foreach (var node in _cache.Values)
+            while (_lruList.Count > maxKeep)
             {
-                try { node.Value.Bitmap.Dispose(); } catch { }
+                var oldest = _lruList.Last;
+                if (oldest == null) break;
+                _lruList.RemoveLast();
+                _cache.Remove(oldest.Value.Path);
+                try { oldest.Value.Bitmap.Dispose(); } catch { }
             }
-            _cache.Clear();
-            _lruList.Clear();
         }
     }
 

@@ -120,6 +120,7 @@ public partial class SettingsWindow : Window
 
     private void SwitchTab(string? tabValue)
     {
+        if (DataContext is SettingsViewModel vm && vm.IsRecordingHotkey) vm.StopRecordingHotkey();
         var panelGeneral = this.FindControl<ScrollViewer>("PanelGeneral");
         var panelAppearance = this.FindControl<ScrollViewer>("PanelAppearance");
         var panelHotkey = this.FindControl<ScrollViewer>("PanelHotkey");

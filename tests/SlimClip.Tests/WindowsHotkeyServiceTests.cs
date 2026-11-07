@@ -1,5 +1,6 @@
 using System;
 using SlimClip.Core.Models;
+using SlimClip.Core.Services;
 using SlimClip.Platform.Windows;
 using Xunit;
 
@@ -11,58 +12,32 @@ public class WindowsHotkeyServiceTests
     private const int WM_KEYUP = 0x0101;
     private const uint VK_LWIN = 0x5B;
     private const uint VK_V = 86;
+    private const uint VK_E = 69;
 
     [Fact]
-    public void WinV_WhenTriggered_SwallowsVDownAndUp_AndNeutralizesWinKeyUp()
+    public void Register_WhenNativeRegisterHotKeySucceeds_ReturnsTrueAndStatusSuccess_WithoutHook()
     {
-        using var service = new WindowsHotkeyService();
-        var hotkeyFired = false;
-        var neutralizedCount = 0;
+        using var service = CreateIsolatedService(nativeRegisterResult: true, out _);
 
-        service.HotkeyPressed += (s, e) => hotkeyFired = true;
-        service.OnWinKeyNeutralized = () => neutralizedCount++;
-
-        service.Register(new HotkeyConfig
+        bool ok = service.Register(new HotkeyConfig
         {
-            Modifiers = KeyModifiers.WindowsOrCommand,
+            Modifiers = KeyModifiers.Alt | KeyModifiers.Shift,
             KeyCode = (int)VK_V,
-            DisplayString = "Win + V",
+            DisplayString = "Alt + Shift + V",
             IsEnabled = true
         });
 
-        // 1. Physical Win Down
-        var resWinDown = service.ProcessKeyEvent(WM_KEYDOWN, VK_LWIN, 0, isInjected: false);
-        Assert.Equal(IntPtr.Zero, resWinDown);
-        Assert.False(hotkeyFired);
-
-        // 2. Physical V Down (HotKey Match!)
-        var resVDown = service.ProcessKeyEvent(WM_KEYDOWN, VK_V, 0, isInjected: false);
-        Assert.Equal((IntPtr)1, resVDown); // Must swallow 'V' down
-        Assert.True(hotkeyFired);
-        Assert.True(service.IsWinKeySuppressionActive, "Win key suppression must be active while Win is held");
-        Assert.Equal(VK_V, service.SuppressedSuffixVk);
-        Assert.Equal(1, neutralizedCount); // Neutralized on chord trigger
-
-        // 3. Physical V Up
-        var resVUp = service.ProcessKeyEvent(WM_KEYUP, VK_V, 0, isInjected: false);
-        Assert.Equal((IntPtr)1, resVUp); // Must swallow 'V' up so background app doesn't receive orphan release
-        Assert.Equal(0u, service.SuppressedSuffixVk);
-
-        // 4. Physical Win Up (User releases Win key)
-        var resWinUp = service.ProcessKeyEvent(WM_KEYUP, VK_LWIN, 0, isInjected: false);
-        Assert.Equal(IntPtr.Zero, resWinUp); // Must pass Win keyup to OS so system knows Win key was released!
-        Assert.Equal(1, neutralizedCount); // Neutralized once on chord trigger
-        Assert.False(service.IsWinKeySuppressionActive, "Win key suppression must be reset after Win keyup");
+        Assert.True(ok);
+        Assert.Equal(HotkeyRegistrationStatus.Success, service.LastRegistrationStatus);
+        Assert.False(service.IsHookInstalled, "Runtime hotkey must NOT install WH_KEYBOARD_LL hook");
     }
 
     [Fact]
-    public void WinAlone_DoesNotNeutralizeWinKeyUp_AllowsNativeStartMenu()
+    public void Register_WinV_WhenOccupiedAndOverrideDisabled_ReturnsOccupiedCanOverrideSystem_AndDoesNotTouchRegistry()
     {
-        using var service = new WindowsHotkeyService();
-        var neutralizedCount = 0;
-        service.OnWinKeyNeutralized = () => neutralizedCount++;
+        using var service = CreateIsolatedService(nativeRegisterResult: false, out var regStore);
 
-        service.Register(new HotkeyConfig
+        bool ok = service.Register(new HotkeyConfig
         {
             Modifiers = KeyModifiers.WindowsOrCommand,
             KeyCode = (int)VK_V,
@@ -70,26 +45,26 @@ public class WindowsHotkeyServiceTests
             IsEnabled = true
         });
 
-        // User taps Win key alone (normal Start menu request)
-        service.ProcessKeyEvent(WM_KEYDOWN, VK_LWIN, 0, isInjected: false);
-        var resWinUp = service.ProcessKeyEvent(WM_KEYUP, VK_LWIN, 0, isInjected: false);
-
-        Assert.Equal(IntPtr.Zero, resWinUp);
-        Assert.Equal(0, neutralizedCount);
-        Assert.False(service.IsWinKeySuppressionActive);
+        Assert.False(ok);
+        Assert.Equal(HotkeyRegistrationStatus.OccupiedCanOverrideSystem, service.LastRegistrationStatus);
+        Assert.Null(regStore.Value);
+        Assert.False(service.IsHookInstalled, "Failed registration must NOT fall back to runtime WH_KEYBOARD_LL hook");
     }
 
     [Fact]
-    public void WinV_WhenWinReleasedBeforeV_BothKeysNeutralizedProperly()
+    public void Register_WinV_WhenOccupiedAndOverrideEnabled_IncrementallyWritesDisabledHotkeys_AndPreservesUserChars()
     {
-        using var service = new WindowsHotkeyService();
-        var hotkeyFired = false;
-        var neutralizedCount = 0;
+        using var service = CreateIsolatedService(nativeRegisterResult: false, out var regStore);
+        regStore.Value = "F"; // User already disabled Win+F externally
+        string persistedManagedChar = string.Empty;
 
-        service.HotkeyPressed += (s, e) => hotkeyFired = true;
-        service.OnWinKeyNeutralized = () => neutralizedCount++;
+        service.ConfigureSystemHotkeyOverride(
+            allowOverride: true,
+            initialManagedChar: string.Empty,
+            onManagedCharChanged: c => persistedManagedChar = c);
 
-        service.Register(new HotkeyConfig
+        // 1. Register Win + V -> appends 'V', keeps 'F'
+        bool ok = service.Register(new HotkeyConfig
         {
             Modifiers = KeyModifiers.WindowsOrCommand,
             KeyCode = (int)VK_V,
@@ -97,100 +72,128 @@ public class WindowsHotkeyServiceTests
             IsEnabled = true
         });
 
-        // 1. Win Down
-        service.ProcessKeyEvent(WM_KEYDOWN, VK_LWIN, 0, isInjected: false);
+        Assert.False(ok);
+        Assert.Equal(HotkeyRegistrationStatus.PendingExplorerRestart, service.LastRegistrationStatus);
+        Assert.Equal("FV", regStore.Value);
+        Assert.Equal("V", persistedManagedChar);
 
-        // 2. V Down
-        var resVDown = service.ProcessKeyEvent(WM_KEYDOWN, VK_V, 0, isInjected: false);
-        Assert.Equal((IntPtr)1, resVDown);
-        Assert.True(hotkeyFired);
+        // 2. Switch to Win + E -> removes 'V', appends 'E', still keeps 'F'
+        service.Register(new HotkeyConfig
+        {
+            Modifiers = KeyModifiers.WindowsOrCommand,
+            KeyCode = (int)VK_E,
+            DisplayString = "Win + E",
+            IsEnabled = true
+        });
 
-        // 3. User releases Win BEFORE releasing V (rolling fingers)
-        var resWinUp = service.ProcessKeyEvent(WM_KEYUP, VK_LWIN, 0, isInjected: false);
-        Assert.Equal(IntPtr.Zero, resWinUp); // Must pass Win keyup to OS even if released before V!
-        Assert.Equal(1, neutralizedCount); // Neutralized on trigger
-        Assert.False(service.IsWinKeySuppressionActive);
+        Assert.Equal("FE", regStore.Value);
+        Assert.Equal("E", persistedManagedChar);
 
-        // 4. User releases V
-        var resVUp = service.ProcessKeyEvent(WM_KEYUP, VK_V, 0, isInjected: false);
-        Assert.Equal((IntPtr)1, resVUp); // Must still swallow V up!
+        // 3. Turn off override mode -> removes 'E', keeps 'F' intact
+        service.ConfigureSystemHotkeyOverride(
+            allowOverride: false,
+            initialManagedChar: persistedManagedChar,
+            onManagedCharChanged: c => persistedManagedChar = c);
+
+        Assert.Equal("F", regStore.Value);
+        Assert.Equal(string.Empty, persistedManagedChar);
     }
 
     [Fact]
-    public void WinV_WhenHeldDown_DoesNotRepeatedlyTriggerHotkeyPressed_SwallowsAllRepeats()
+    public void Register_WinNonAlphanumeric_WhenOccupied_ReturnsOccupiedCannotRegister_EvenIfOverrideEnabled()
     {
-        using var service = new WindowsHotkeyService();
-        var hotkeyFireCount = 0;
+        using var service = CreateIsolatedService(nativeRegisterResult: false, out var regStore);
+        service.ConfigureSystemHotkeyOverride(allowOverride: true);
 
-        service.HotkeyPressed += (s, e) => hotkeyFireCount++;
-
-        service.Register(new HotkeyConfig
+        // VK_OEM_1 (';' = 0xBA) is not an ASCII letter/digit supported by DisabledHotkeys
+        bool ok = service.Register(new HotkeyConfig
         {
             Modifiers = KeyModifiers.WindowsOrCommand,
-            KeyCode = (int)VK_V,
-            DisplayString = "Win + V",
+            KeyCode = 0xBA,
+            DisplayString = "Win + ;",
             IsEnabled = true
         });
 
-        // 1. Win Down
-        service.ProcessKeyEvent(WM_KEYDOWN, VK_LWIN, 0, isInjected: false);
-
-        // 2. V Down - 1st trigger
-        var resV1 = service.ProcessKeyEvent(WM_KEYDOWN, VK_V, 0, isInjected: false);
-        Assert.Equal((IntPtr)1, resV1);
-        Assert.Equal(1, hotkeyFireCount);
-
-        // 3. V Down repeated (hardware auto-repeat) - 2nd KeyDown
-        var resV2 = service.ProcessKeyEvent(WM_KEYDOWN, VK_V, 0, isInjected: false);
-        Assert.Equal((IntPtr)1, resV2); // Must swallow repeat
-        Assert.Equal(1, hotkeyFireCount); // Must NOT fire again to prevent Dismiss toggle jitter!
-
-        // 4. V Down repeated (hardware auto-repeat) - 3rd KeyDown
-        var resV3 = service.ProcessKeyEvent(WM_KEYDOWN, VK_V, 0, isInjected: false);
-        Assert.Equal((IntPtr)1, resV3);
-        Assert.Equal(1, hotkeyFireCount);
-
-        // 5. V Up
-        var resVUp = service.ProcessKeyEvent(WM_KEYUP, VK_V, 0, isInjected: false);
-        Assert.Equal((IntPtr)1, resVUp);
-
-        // 6. Win Up
-        var resWinUp = service.ProcessKeyEvent(WM_KEYUP, VK_LWIN, 0, isInjected: false);
-        Assert.Equal(IntPtr.Zero, resWinUp);
+        Assert.False(ok);
+        Assert.Equal(HotkeyRegistrationStatus.OccupiedCannotRegister, service.LastRegistrationStatus);
+        Assert.Null(regStore.Value);
     }
 
     [Fact]
-    public void WinV_AfterRelease_SubsequentCtrlV_DoesNotRetainWinModifier()
+    public void Recording_UsesHookOnlyWhileRecording_AndCapturesWinVWithoutSyntheticInjection()
     {
-        using var service = new WindowsHotkeyService();
-        var winVFired = 0;
+        using var service = CreateIsolatedService(nativeRegisterResult: true, out _);
+        var keyboard = new FakeKeyboard(service);
+        HotkeyConfig? recorded = null;
+        service.HotkeyRecorded += (s, cfg) => recorded = cfg;
 
-        service.HotkeyPressed += (s, e) => winVFired++;
+        service.StartRecording();
 
-        service.Register(new HotkeyConfig
+        // 1. Hold Win
+        Assert.Equal(IntPtr.Zero, keyboard.Down(VK_LWIN));
+        Assert.Null(recorded);
+
+        // 2. Press V -> captures "Win + V", swallows V down, and automatically stops recording
+        Assert.Equal((IntPtr)1, keyboard.Down(VK_V));
+        Assert.NotNull(recorded);
+        Assert.Equal(KeyModifiers.WindowsOrCommand, recorded!.Modifiers);
+        Assert.Equal((int)VK_V, recorded.KeyCode);
+        Assert.Equal("Win + V", recorded.DisplayString);
+
+        // 3. Release keys -> passed through cleanly
+        Assert.Equal(IntPtr.Zero, keyboard.Up(VK_V));
+        Assert.Equal(IntPtr.Zero, keyboard.Up(VK_LWIN));
+    }
+
+    [Fact]
+    public void Recording_WhenWinF1Pressed_CapturesWinModifierAndFormatsWinF1()
+    {
+        using var service = CreateIsolatedService(nativeRegisterResult: true, out _);
+        var keyboard = new FakeKeyboard(service);
+        HotkeyConfig? recorded = null;
+        service.HotkeyRecorded += (s, cfg) => recorded = cfg;
+
+        service.StartRecording();
+
+        // Hold Win then press F1 (0x70) -> must record "Win + F1", NOT bare "F1"
+        Assert.Equal(IntPtr.Zero, keyboard.Down(VK_LWIN));
+        Assert.Equal((IntPtr)1, keyboard.Down(0x70));
+
+        Assert.NotNull(recorded);
+        Assert.Equal(KeyModifiers.WindowsOrCommand, recorded!.Modifiers);
+        Assert.Equal(0x70, recorded.KeyCode);
+        Assert.Equal("Win + F1", recorded.DisplayString);
+    }
+
+    private sealed class FakeRegistryStore
+    {
+        public string? Value { get; set; }
+    }
+
+    private static WindowsHotkeyService CreateIsolatedService(bool nativeRegisterResult, out FakeRegistryStore store)
+    {
+        var regStore = new FakeRegistryStore();
+        store = regStore;
+        return new WindowsHotkeyService
         {
-            Modifiers = KeyModifiers.WindowsOrCommand,
-            KeyCode = (int)VK_V,
-            DisplayString = "Win + V",
-            IsEnabled = true
-        });
+            NativeRegisterHotKeyOverride = (_, _, _, _) => nativeRegisterResult,
+            NativeUnregisterHotKeyOverride = (_, _) => true,
+            ReadDisabledHotkeysOverride = () => regStore.Value,
+            WriteDisabledHotkeysOverride = val => regStore.Value = val
+        };
+    }
 
-        // 1. Trigger Win + V
-        service.ProcessKeyEvent(WM_KEYDOWN, VK_LWIN, 0, isInjected: false);
-        service.ProcessKeyEvent(WM_KEYDOWN, VK_V, 0, isInjected: false);
-        Assert.Equal(1, winVFired);
+    private sealed class FakeKeyboard
+    {
+        private readonly WindowsHotkeyService _service;
 
-        // 2. Release V then Win
-        service.ProcessKeyEvent(WM_KEYUP, VK_V, 0, isInjected: false);
-        service.ProcessKeyEvent(WM_KEYUP, VK_LWIN, 0, isInjected: false);
+        public FakeKeyboard(WindowsHotkeyService service)
+        {
+            _service = service;
+        }
 
-        // 3. User now presses Ctrl + V
-        const uint VK_CONTROL = 0x11;
-        service.ProcessKeyEvent(WM_KEYDOWN, VK_CONTROL, 0, isInjected: false);
-        var resV = service.ProcessKeyEvent(WM_KEYDOWN, VK_V, 0, isInjected: false);
+        public IntPtr Down(uint vk) => _service.ProcessKeyEvent(WM_KEYDOWN, vk, 0, isInjected: false);
 
-        // resV must NOT match Win+V hotkey (should be passed to app as standard paste)
-        Assert.Equal(IntPtr.Zero, resV);
-        Assert.Equal(1, winVFired); // Must NOT fire Win+V again!
+        public IntPtr Up(uint vk) => _service.ProcessKeyEvent(WM_KEYUP, vk, 0, isInjected: false);
     }
 }

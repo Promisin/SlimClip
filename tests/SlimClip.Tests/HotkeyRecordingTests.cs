@@ -18,16 +18,33 @@ public class HotkeyRecordingTests
 
         public bool IsRecording { get; private set; }
         public HotkeyConfig? RegisteredConfig { get; private set; }
+        public HotkeyRegistrationStatus NextStatus { get; set; } = HotkeyRegistrationStatus.Success;
+        public HotkeyRegistrationStatus LastRegistrationStatus { get; private set; } = HotkeyRegistrationStatus.Success;
+        public bool AllowSystemOverride { get; private set; }
+        public int RestartExplorerCallCount { get; private set; }
 
         public bool Register(HotkeyConfig config)
         {
             RegisteredConfig = config;
-            return true;
+            LastRegistrationStatus = NextStatus;
+            return LastRegistrationStatus == HotkeyRegistrationStatus.Success;
         }
 
         public void Unregister()
         {
             RegisteredConfig = null;
+        }
+
+        public void ConfigureSystemHotkeyOverride(bool allowOverride, string? initialManagedChar = null, Action<string>? onManagedCharChanged = null)
+        {
+            AllowSystemOverride = allowOverride;
+        }
+
+        public bool RestartExplorerAndReRegister()
+        {
+            RestartExplorerCallCount++;
+            LastRegistrationStatus = HotkeyRegistrationStatus.Success;
+            return true;
         }
 
         public void StartRecording()
@@ -49,7 +66,7 @@ public class HotkeyRecordingTests
     }
 
     [Fact]
-    public void SettingsViewModel_StartRecording_NotifiesHotkeyService()
+    public void SettingsViewModel_ToggleRecording_StartsAndCancelsRecording()
     {
         var tempDir = Path.Combine(Path.GetTempPath(), "SlimClip_Test_" + Guid.NewGuid().ToString("N"));
         var settingsService = new SettingsService(null, tempDir);
@@ -57,12 +74,19 @@ public class HotkeyRecordingTests
         var vm = new SettingsViewModel(settingsService, new ClipboardHistory(":memory:", tempDir), mockHotkeyService);
 
         Assert.False(vm.IsRecordingHotkey);
-        Assert.False(mockHotkeyService.IsRecording);
+        Assert.Equal(settingsService.Settings.Hotkey.DisplayString, vm.HotkeyBoxText);
 
-        vm.StartRecordingHotkey();
-
+        // 1st click on Direct Hotkey Recorder starts recording
+        vm.ToggleRecordingHotkeyCommand.Execute(null);
         Assert.True(vm.IsRecordingHotkey);
-        Assert.True(mockHotkeyService.IsRecording, "IHotkeyService.StartRecording must be called to engage low-level keyboard hook");
+        Assert.True(mockHotkeyService.IsRecording);
+        Assert.Equal(vm.L["Settings_Hotkey_Recording"], vm.HotkeyBoxText);
+
+        // 2nd click cancels recording and restores original display text
+        vm.ToggleRecordingHotkeyCommand.Execute(null);
+        Assert.False(vm.IsRecordingHotkey);
+        Assert.False(mockHotkeyService.IsRecording);
+        Assert.Equal(settingsService.Settings.Hotkey.DisplayString, vm.HotkeyBoxText);
     }
 
     [Fact]
@@ -76,7 +100,6 @@ public class HotkeyRecordingTests
         vm.StartRecordingHotkey();
         Assert.True(vm.IsRecordingHotkey);
 
-        // Simulate recording Win+V from low-level hook
         var winV = new HotkeyConfig
         {
             Modifiers = KeyModifiers.WindowsOrCommand,
@@ -94,6 +117,41 @@ public class HotkeyRecordingTests
     }
 
     [Fact]
+    public void SettingsViewModel_WhenWinVOccupied_ExposesImmediateFeedbackAndExplorerRestartFlow()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), "SlimClip_Test_" + Guid.NewGuid().ToString("N"));
+        var settingsService = new SettingsService(null, tempDir);
+        var mockHotkeyService = new MockHotkeyService
+        {
+            NextStatus = HotkeyRegistrationStatus.OccupiedCanOverrideSystem
+        };
+        var vm = new SettingsViewModel(settingsService, new ClipboardHistory(":memory:", tempDir), mockHotkeyService);
+        vm.HotkeyChanged += (_, cfg) => mockHotkeyService.Register(cfg);
+
+        // 1. User records Win + V while override is off -> immediate warning feedback
+        vm.ApplyRecordedHotkey(KeyModifiers.WindowsOrCommand, 86, "Win + V");
+        vm.RefreshHotkeyRegistrationStatus();
+
+        Assert.True(vm.HasHotkeyStatusMessage);
+        Assert.False(vm.NeedsExplorerRestart);
+
+        // 2. User enables AllowDisableSystemHotkeys -> status transitions to PendingExplorerRestart
+        mockHotkeyService.NextStatus = HotkeyRegistrationStatus.PendingExplorerRestart;
+        vm.AllowDisableSystemHotkeys = true;
+
+        Assert.True(vm.AllowDisableSystemHotkeys);
+        Assert.True(mockHotkeyService.AllowSystemOverride);
+        Assert.True(vm.NeedsExplorerRestart);
+        Assert.True(vm.HasHotkeyStatusMessage);
+
+        // 3. User clicks Restart Explorer button -> re-registers and clears warning
+        vm.RestartExplorerCommand.Execute(null);
+        Assert.Equal(1, mockHotkeyService.RestartExplorerCallCount);
+        Assert.False(vm.NeedsExplorerRestart);
+        Assert.False(vm.HasHotkeyStatusMessage);
+    }
+
+    [Fact]
     public void SettingsViewModel_RecordingBareLetterKey_IsIgnoredAndDoesNotSave()
     {
         var tempDir = Path.Combine(Path.GetTempPath(), "SlimClip_Test_" + Guid.NewGuid().ToString("N"));
@@ -108,7 +166,6 @@ public class HotkeyRecordingTests
         vm.StartRecordingHotkey();
         Assert.True(vm.IsRecordingHotkey);
 
-        // Attempt to apply a bare letter 'V' without any modifiers
         var bareV = new HotkeyConfig
         {
             Modifiers = KeyModifiers.None,
@@ -119,7 +176,6 @@ public class HotkeyRecordingTests
 
         mockHotkeyService.SimulateKeyRecorded(bareV);
 
-        // Must reject: state should remain recording, and original hotkey remains intact
         Assert.True(vm.IsRecordingHotkey, "Recording should NOT stop when a bare non-function key is received");
         Assert.Equal(originalDisplay, vm.HotkeyDisplay);
         Assert.Equal(originalKeyCode, settingsService.Settings.Hotkey.KeyCode);
@@ -137,7 +193,6 @@ public class HotkeyRecordingTests
         vm.StartRecordingHotkey();
         Assert.True(vm.IsRecordingHotkey);
 
-        // Function keys (F1-F24) are allowed without modifiers
         var f12 = new HotkeyConfig
         {
             Modifiers = KeyModifiers.None,
@@ -162,11 +217,9 @@ public class HotkeyRecordingTests
         var mockHotkeyService = new MockHotkeyService();
         var vm = new SettingsViewModel(settingsService, new ClipboardHistory(":memory:", tempDir), mockHotkeyService);
 
-        // 修改当前快捷键为某个非默认值
         vm.ApplyRecordedHotkey(KeyModifiers.Control, 65, "Ctrl + A");
         Assert.Equal(65, settingsService.Settings.Hotkey.KeyCode);
 
-        // 执行重置默认
         vm.ResetHotkeyDefaultCommand.Execute(null);
 
         var isMac = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX);

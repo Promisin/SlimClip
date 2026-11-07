@@ -116,11 +116,10 @@ public class UpdateService : IUpdateService
     {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            // Windows: 启动安装向导，让 Inno Setup 接管安装并关闭旧进程
+            // Windows: 启动自定义安装器接管升级并关闭旧进程
             Process.Start(new ProcessStartInfo
             {
                 FileName = installerPath,
-                Arguments = "/SP-", // 跳过“准备安装此程序吗”向导提示，直接进入安装流程
                 UseShellExecute = true
             });
             Environment.Exit(0);

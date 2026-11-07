@@ -18,8 +18,6 @@
 - **推荐 IDE**：
   - Windows: Visual Studio 2022+ / JetBrains Rider / VS Code (C# Dev Kit)
   - macOS: JetBrains Rider / VS Code (C# Dev Kit)
-- **可选工具**：
-  - Windows 安装包构建需要 [Inno Setup 6+](https://jrsoftware.org/isdl.php)
 
 ---
 

@@ -1,5 +1,8 @@
 using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Threading;
+using Microsoft.Win32;
 using SlimClip.Core.Models;
 using SlimClip.Core.Services;
 
@@ -11,6 +14,9 @@ public class WindowsHotkeyService : IHotkeyService
     public event EventHandler<HotkeyConfig>? HotkeyRecorded;
 
     private const int HOTKEY_ID = 9001;
+    private const string ExplorerAdvancedKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced";
+    private const string DisabledHotkeysValueName = "DisabledHotkeys";
+
     private IntPtr _messageHwnd = IntPtr.Zero;
     private readonly NativeMethods.WndProcDelegate _wndProc;
     private IntPtr _hookHandle = IntPtr.Zero;
@@ -20,28 +26,37 @@ public class WindowsHotkeyService : IHotkeyService
     private bool _isRecording;
     private bool _isDisposed;
 
-    private volatile bool _isWinDown;
-    private volatile bool _isCtrlDown;
-    private volatile bool _isAltDown;
-    private volatile bool _isShiftDown;
-    private volatile bool _isChordTriggered;
+    private bool _allowSystemOverride;
+    private string _managedDisabledChar = string.Empty;
+    private Action<string>? _onManagedCharChanged;
+
+    // 录制期间的修饰键状态（仅在 UI 线程读写）
+    private bool _isWinDown;
+    private bool _isCtrlDown;
+    private bool _isAltDown;
+    private bool _isShiftDown;
+
+    public HotkeyRegistrationStatus LastRegistrationStatus { get; private set; } = HotkeyRegistrationStatus.Success;
+
+    internal bool IsHookInstalled => _hookHandle != IntPtr.Zero;
+
+    /// <summary>原生 RegisterHotKey 调用接缝（便于单元测试隔离系统状态）。</summary>
+    internal Func<IntPtr, int, uint, uint, bool>? NativeRegisterHotKeyOverride { get; set; }
+
+    /// <summary>原生 UnregisterHotKey 调用接缝。</summary>
+    internal Func<IntPtr, int, bool>? NativeUnregisterHotKeyOverride { get; set; }
+
+    /// <summary>读取 Explorer DisabledHotkeys 注册表值的接缝。</summary>
+    internal Func<string?>? ReadDisabledHotkeysOverride { get; set; }
+
+    /// <summary>写入 Explorer DisabledHotkeys 注册表值的接缝（传 null 或空串表示删除该值）。</summary>
+    internal Action<string?>? WriteDisabledHotkeysOverride { get; set; }
 
     public WindowsHotkeyService()
     {
         _wndProc = WndProc;
         _hookProc = LowLevelKeyboardHook;
         CreateMessageWindow();
-        PreWarmNeutralizer();
-    }
-
-    private void PreWarmNeutralizer()
-    {
-        try
-        {
-            System.Runtime.CompilerServices.RuntimeHelpers.PrepareMethod(
-                typeof(WindowsHotkeyService).GetMethod(nameof(NeutralizeWinKey), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.MethodHandle);
-        }
-        catch { }
     }
 
     private void CreateMessageWindow()
@@ -69,91 +84,264 @@ public class WindowsHotkeyService : IHotkeyService
             IntPtr.Zero);
     }
 
+    public void ConfigureSystemHotkeyOverride(bool allowOverride, string? initialManagedChar = null, Action<string>? onManagedCharChanged = null)
+    {
+        if (initialManagedChar != null)
+        {
+            _managedDisabledChar = initialManagedChar;
+        }
+        if (onManagedCharChanged != null)
+        {
+            _onManagedCharChanged = onManagedCharChanged;
+        }
+
+        _allowSystemOverride = allowOverride;
+
+        if (!_allowSystemOverride)
+        {
+            RemoveManagedDisabledHotkeyChar();
+        }
+    }
+
     public bool Register(HotkeyConfig config)
     {
-        Unregister();
+        UnregisterInternal();
         _currentConfig = config;
 
         if (!config.IsEnabled)
+        {
+            RemoveManagedDisabledHotkeyChar();
+            LastRegistrationStatus = HotkeyRegistrationStatus.Success;
             return true;
+        }
 
-        uint fsModifiers = 0;
+        uint fsModifiers = (uint)NativeMethods.MOD_NOREPEAT;
         if (config.Modifiers.HasFlag(KeyModifiers.Alt)) fsModifiers |= (uint)NativeMethods.MOD_ALT;
         if (config.Modifiers.HasFlag(KeyModifiers.Control)) fsModifiers |= (uint)NativeMethods.MOD_CONTROL;
         if (config.Modifiers.HasFlag(KeyModifiers.Shift)) fsModifiers |= (uint)NativeMethods.MOD_SHIFT;
         if (config.Modifiers.HasFlag(KeyModifiers.WindowsOrCommand)) fsModifiers |= (uint)NativeMethods.MOD_WIN;
 
-        // If Windows key is involved, install LL hook to intercept without opening Start menu
-        if (config.Modifiers.HasFlag(KeyModifiers.WindowsOrCommand))
+        bool hasWin = config.Modifiers.HasFlag(KeyModifiers.WindowsOrCommand);
+        char? overrideChar = TryGetDisabledHotkeyChar(config.KeyCode);
+
+        // 若新快捷键不需要禁用之前的字符，先清理旧的托管字符
+        if (!_allowSystemOverride || !hasWin || overrideChar == null || _managedDisabledChar != overrideChar.Value.ToString())
         {
-            InstallHook();
+            RemoveManagedDisabledHotkeyChar();
+        }
+
+        bool registered = InvokeRegisterHotKey(_messageHwnd, HOTKEY_ID, fsModifiers, (uint)config.KeyCode);
+        if (registered)
+        {
+            LastRegistrationStatus = HotkeyRegistrationStatus.Success;
             return true;
         }
 
-        // Otherwise use RegisterHotKey
-        fsModifiers |= (uint)NativeMethods.MOD_NOREPEAT;
-        var success = NativeMethods.RegisterHotKey(_messageHwnd, HOTKEY_ID, fsModifiers, (uint)config.KeyCode);
-        if (!success)
+        // 原生 RegisterHotKey 失败：不挂载后台钩子，立即暴露冲突状态并按模式处理注册表
+        if (hasWin && overrideChar.HasValue)
         {
-            // Fallback to hook
-            InstallHook();
+            if (_allowSystemOverride)
+            {
+                EnsureManagedDisabledHotkeyChar(overrideChar.Value);
+                LastRegistrationStatus = HotkeyRegistrationStatus.PendingExplorerRestart;
+            }
+            else
+            {
+                LastRegistrationStatus = HotkeyRegistrationStatus.OccupiedCanOverrideSystem;
+            }
+        }
+        else
+        {
+            LastRegistrationStatus = HotkeyRegistrationStatus.OccupiedCannotRegister;
         }
 
-        return true;
+        return false;
+    }
+
+    public bool RestartExplorerAndReRegister()
+    {
+        try
+        {
+            foreach (var proc in Process.GetProcessesByName("explorer"))
+            {
+                try
+                {
+                    proc.Kill();
+                    proc.WaitForExit(3000);
+                }
+                catch { }
+                finally
+                {
+                    proc.Dispose();
+                }
+            }
+
+            Thread.Sleep(600);
+            if (Process.GetProcessesByName("explorer").Length == 0)
+            {
+                Process.Start(new ProcessStartInfo("explorer.exe") { UseShellExecute = true });
+            }
+
+            // 等待新 Explorer 进程完成初始化并读取 DisabledHotkeys
+            for (int i = 0; i < 10; i++)
+            {
+                Thread.Sleep(350);
+                if (_currentConfig != null && Register(_currentConfig))
+                {
+                    return true;
+                }
+            }
+        }
+        catch { }
+
+        return _currentConfig != null && Register(_currentConfig);
+    }
+
+    private static char? TryGetDisabledHotkeyChar(int vkCode)
+    {
+        if (vkCode is >= 0x41 and <= 0x5A) // A - Z
+            return (char)vkCode;
+        if (vkCode is >= 0x30 and <= 0x39) // 0 - 9
+            return (char)vkCode;
+        return null;
+    }
+
+    private void EnsureManagedDisabledHotkeyChar(char targetChar)
+    {
+        string targetStr = char.ToUpperInvariant(targetChar).ToString();
+        string current = ReadDisabledHotkeys() ?? string.Empty;
+
+        if (!current.Contains(targetStr, StringComparison.OrdinalIgnoreCase))
+        {
+            WriteDisabledHotkeys(current + targetStr);
+        }
+
+        if (_managedDisabledChar != targetStr)
+        {
+            _managedDisabledChar = targetStr;
+            _onManagedCharChanged?.Invoke(_managedDisabledChar);
+        }
+    }
+
+    private void RemoveManagedDisabledHotkeyChar()
+    {
+        if (string.IsNullOrEmpty(_managedDisabledChar))
+            return;
+
+        string current = ReadDisabledHotkeys() ?? string.Empty;
+        if (!string.IsNullOrEmpty(current))
+        {
+            string updated = current.Replace(_managedDisabledChar, string.Empty, StringComparison.OrdinalIgnoreCase);
+            if (updated != current)
+            {
+                WriteDisabledHotkeys(string.IsNullOrEmpty(updated) ? null : updated);
+            }
+        }
+
+        _managedDisabledChar = string.Empty;
+        _onManagedCharChanged?.Invoke(string.Empty);
+    }
+
+    private string? ReadDisabledHotkeys()
+    {
+        if (ReadDisabledHotkeysOverride != null)
+            return ReadDisabledHotkeysOverride();
+
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(ExplorerAdvancedKeyPath, writable: false);
+            return key?.GetValue(DisabledHotkeysValueName) as string;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private void WriteDisabledHotkeys(string? value)
+    {
+        if (WriteDisabledHotkeysOverride != null)
+        {
+            WriteDisabledHotkeysOverride(value);
+            return;
+        }
+
+        try
+        {
+            using var key = Registry.CurrentUser.CreateSubKey(ExplorerAdvancedKeyPath, writable: true);
+            if (key == null) return;
+
+            if (string.IsNullOrEmpty(value))
+            {
+                key.DeleteValue(DisabledHotkeysValueName, throwOnMissingValue: false);
+            }
+            else
+            {
+                key.SetValue(DisabledHotkeysValueName, value, RegistryValueKind.String);
+            }
+        }
+        catch { }
+    }
+
+    private bool InvokeRegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk)
+    {
+        if (NativeRegisterHotKeyOverride != null)
+            return NativeRegisterHotKeyOverride(hWnd, id, fsModifiers, vk);
+        return NativeMethods.RegisterHotKey(hWnd, id, fsModifiers, vk);
+    }
+
+    private void InvokeUnregisterHotKey(IntPtr hWnd, int id)
+    {
+        if (NativeUnregisterHotKeyOverride != null)
+        {
+            NativeUnregisterHotKeyOverride(hWnd, id);
+            return;
+        }
+        NativeMethods.UnregisterHotKey(hWnd, id);
     }
 
     public void Unregister()
     {
+        UnregisterInternal();
+    }
+
+    private void UnregisterInternal()
+    {
         if (_messageHwnd != IntPtr.Zero)
         {
-            NativeMethods.UnregisterHotKey(_messageHwnd, HOTKEY_ID);
+            InvokeUnregisterHotKey(_messageHwnd, HOTKEY_ID);
         }
-        if (!_isRecording && !IsWinKeySuppressionActive)
+        if (!_isRecording)
         {
             UninstallHook();
         }
-        IsWinKeySuppressionActive = false;
-        SuppressedSuffixVk = 0;
-        _isChordTriggered = false;
     }
 
     public void StartRecording()
     {
         _isRecording = true;
-        SyncModifierStates();
+        ResetModifierStates();
         InstallHook();
     }
 
     public void StopRecording()
     {
         _isRecording = false;
-        SyncModifierStates();
-        // If current config doesn't require a hook and no Win key suppression is active, uninstall it
-        if (_currentConfig == null || !_currentConfig.IsEnabled || !_currentConfig.Modifiers.HasFlag(KeyModifiers.WindowsOrCommand))
-        {
-            if (!IsWinKeySuppressionActive && !_isWinDown)
-            {
-                UninstallHook();
-            }
-        }
+        ResetModifierStates();
+        UninstallHook();
     }
 
-    private void SyncModifierStates()
+    private void ResetModifierStates()
     {
-        _isWinDown = IsPhysicalKeyDown(0x5B) || IsPhysicalKeyDown(0x5C);
-        _isCtrlDown = IsPhysicalKeyDown(0x11) || IsPhysicalKeyDown(0xA2) || IsPhysicalKeyDown(0xA3);
-        _isAltDown = IsPhysicalKeyDown(0x12) || IsPhysicalKeyDown(0xA4) || IsPhysicalKeyDown(0xA5);
-        _isShiftDown = IsPhysicalKeyDown(0x10) || IsPhysicalKeyDown(0xA0) || IsPhysicalKeyDown(0xA1);
-    }
-
-    private static bool IsPhysicalKeyDown(int vk)
-    {
-        return (NativeMethods.GetKeyState(vk) < 0) || ((NativeMethods.GetAsyncKeyState(vk) & 0x8000) != 0);
+        _isWinDown = false;
+        _isCtrlDown = false;
+        _isAltDown = false;
+        _isShiftDown = false;
     }
 
     private void InstallHook()
     {
-        if (_hookHandle == IntPtr.Zero)
+        if (_hookHandle == IntPtr.Zero && NativeRegisterHotKeyOverride == null)
         {
             var hMod = NativeMethods.GetModuleHandleW(null);
             _hookHandle = NativeMethods.SetWindowsHookExW(NativeMethods.WH_KEYBOARD_LL, _hookProc, hMod, 0);
@@ -190,10 +378,6 @@ public class WindowsHotkeyService : IHotkeyService
         public UIntPtr dwExtraInfo;
     }
 
-    internal bool IsWinKeySuppressionActive { get; set; }
-    internal uint SuppressedSuffixVk { get; set; }
-    internal Action? OnWinKeyNeutralized { get; set; }
-
     private IntPtr LowLevelKeyboardHook(int nCode, IntPtr wParam, IntPtr lParam)
     {
         if (nCode >= 0)
@@ -214,152 +398,101 @@ public class WindowsHotkeyService : IHotkeyService
 
     internal IntPtr ProcessKeyEvent(int msg, uint vk, uint flags, bool isInjected)
     {
+        if (!_isRecording)
+            return IntPtr.Zero;
+
         bool isKeyDown = msg == NativeMethods.WM_KEYDOWN || msg == NativeMethods.WM_SYSKEYDOWN;
         bool isKeyUp = msg == NativeMethods.WM_KEYUP || msg == NativeMethods.WM_SYSKEYUP;
 
-        if (isKeyDown || isKeyUp)
+        if (!isKeyDown && !isKeyUp)
+            return IntPtr.Zero;
+
+        if (!isInjected)
         {
-            // Update physical modifier states from the input stream (ignore synthetic injected events)
-            if (!isInjected)
-            {
-                if (vk is 0x5B or 0x5C)
-                {
-                    _isWinDown = isKeyDown;
-                }
-                else if (vk is 0x11 or 0xA2 or 0xA3)
-                {
-                    _isCtrlDown = isKeyDown;
-                }
-                else if (vk is 0x12 or 0xA4 or 0xA5)
-                {
-                    _isAltDown = isKeyDown;
-                }
-                else if (vk is 0x10 or 0xA0 or 0xA1)
-                {
-                    _isShiftDown = isKeyDown;
-                }
-            }
-
-            if (isKeyUp)
-            {
-                // 1. Swallow keyup for hotkey suffix key (e.g. V up) so active app doesn't receive orphan release
-                if (SuppressedSuffixVk != 0 && vk == SuppressedSuffixVk)
-                {
-                    SuppressedSuffixVk = 0;
-                    _isChordTriggered = false;
-                    return (IntPtr)1;
-                }
-
-                if (_currentConfig != null && vk == (uint)_currentConfig.KeyCode)
-                {
-                    _isChordTriggered = false;
-                }
-
-                // 2. Win key release: reset suppression state and ALWAYS let OS receive Win keyup!
-                if (vk is 0x5B or 0x5C)
-                {
-                    IsWinKeySuppressionActive = false;
-                }
-            }
-
-            if (isKeyDown)
-            {
-                // Compute effective modifiers with multiple redundancy checks
-                bool alt = _isAltDown || ((flags & NativeMethods.LLKHF_ALTDOWN) != 0) ||
-                           IsPhysicalKeyDown(0x12) || IsPhysicalKeyDown(0xA4) || IsPhysicalKeyDown(0xA5);
-                bool ctrl = _isCtrlDown || IsPhysicalKeyDown(0x11) || IsPhysicalKeyDown(0xA2) || IsPhysicalKeyDown(0xA3);
-                bool shift = _isShiftDown || IsPhysicalKeyDown(0x10) || IsPhysicalKeyDown(0xA0) || IsPhysicalKeyDown(0xA1);
-                bool win = _isWinDown || IsPhysicalKeyDown(0x5B) || IsPhysicalKeyDown(0x5C);
-
-                if (_isRecording)
-                {
-                    // Ignore isolated modifier keys alone (wait for key chord)
-                    if (vk is 0x10 or 0x11 or 0x12 or 0x5B or 0x5C or 0xA0 or 0xA1 or 0xA2 or 0xA3 or 0xA4 or 0xA5)
-                    {
-                        return IntPtr.Zero;
-                    }
-
-                    if (vk == 0x1B) // VK_ESCAPE
-                    {
-                        StopRecording();
-                        return (IntPtr)1; // Swallow ESC
-                    }
-
-                    var mods = KeyModifiers.None;
-                    if (alt) mods |= KeyModifiers.Alt;
-                    if (ctrl) mods |= KeyModifiers.Control;
-                    if (shift) mods |= KeyModifiers.Shift;
-                    if (win) mods |= KeyModifiers.WindowsOrCommand;
-
-                    bool isFunctionKey = vk >= 0x70 && vk <= 0x87; // F1 - F24
-
-                    if (mods == KeyModifiers.None)
-                    {
-                        if (vk == 0x08) // Backspace
-                        {
-                            // Pass through to window to clear hotkey
-                            return IntPtr.Zero;
-                        }
-
-                        if (!isFunctionKey)
-                        {
-                            // Reject bare keys without modifiers as global hotkeys
-                            return (IntPtr)1; // Swallow bare letter to avoid typing into background, keep recording
-                        }
-                    }
-
-                    if (win)
-                    {
-                        IsWinKeySuppressionActive = true;
-                        SuppressedSuffixVk = vk;
-                        NeutralizeWinKey();
-                    }
-
-                    var display = FormatWinDisplay(mods, vk);
-                    var recordedConfig = new HotkeyConfig
-                    {
-                        Modifiers = mods,
-                        KeyCode = (int)vk,
-                        DisplayString = display,
-                        IsEnabled = true
-                    };
-
-                    StopRecording();
-                    HotkeyRecorded?.Invoke(this, recordedConfig);
-                    return (IntPtr)1; // SWALLOW key to prevent OS Shell (e.g. Win+V clipboard) from receiving it!
-                }
-
-                if (_currentConfig != null && _currentConfig.IsEnabled)
-                {
-                    bool matchAlt = _currentConfig.Modifiers.HasFlag(KeyModifiers.Alt) == alt;
-                    bool matchCtrl = _currentConfig.Modifiers.HasFlag(KeyModifiers.Control) == ctrl;
-                    bool matchShift = _currentConfig.Modifiers.HasFlag(KeyModifiers.Shift) == shift;
-                    bool matchWin = _currentConfig.Modifiers.HasFlag(KeyModifiers.WindowsOrCommand) == win;
-
-                    if (matchAlt && matchCtrl && matchShift && matchWin && vk == (uint)_currentConfig.KeyCode)
-                    {
-                        // Neutralize Win key menu popup if Win was pressed
-                        if (win)
-                        {
-                            IsWinKeySuppressionActive = true;
-                            SuppressedSuffixVk = vk;
-                            NeutralizeWinKey();
-                        }
-
-                        // Prevent hardware auto-repeat from repeatedly firing hotkey event and causing UI jitter/dismiss
-                        if (!_isChordTriggered)
-                        {
-                            _isChordTriggered = true;
-                            HotkeyPressed?.Invoke(this, EventArgs.Empty);
-                        }
-
-                        return (IntPtr)1; // Swallow key
-                    }
-                }
-            }
+            if (vk is 0x5B or 0x5C)
+                _isWinDown = isKeyDown;
+            else if (vk is 0x11 or 0xA2 or 0xA3)
+                _isCtrlDown = isKeyDown;
+            else if (vk is 0x12 or 0xA4 or 0xA5)
+                _isAltDown = isKeyDown;
+            else if (vk is 0x10 or 0xA0 or 0xA1)
+                _isShiftDown = isKeyDown;
         }
 
-        return IntPtr.Zero;
+        if (!isKeyDown)
+            return IntPtr.Zero;
+
+        // 单独按下修饰键时继续等待主键
+        if (vk is 0x10 or 0x11 or 0x12 or 0x5B or 0x5C or 0xA0 or 0xA1 or 0xA2 or 0xA3 or 0xA4 or 0xA5)
+        {
+            return IntPtr.Zero;
+        }
+
+        if (vk == 0x1B) // VK_ESCAPE
+        {
+            StopRecording();
+            return (IntPtr)1;
+        }
+
+        bool alt = _isAltDown || ((flags & NativeMethods.LLKHF_ALTDOWN) != 0);
+        bool ctrl = _isCtrlDown;
+        bool shift = _isShiftDown;
+        bool win = _isWinDown;
+
+        var mods = KeyModifiers.None;
+        if (alt) mods |= KeyModifiers.Alt;
+        if (ctrl) mods |= KeyModifiers.Control;
+        if (shift) mods |= KeyModifiers.Shift;
+        if (win) mods |= KeyModifiers.WindowsOrCommand;
+
+        bool isFunctionKey = vk >= 0x70 && vk <= 0x87; // F1 - F24
+
+        if (mods == KeyModifiers.None)
+        {
+            if (vk == 0x08) // Backspace 清空快捷键
+                return IntPtr.Zero;
+
+            if (!isFunctionKey)
+                return (IntPtr)1; // 拒绝无修饰键的单字母，保持录制状态
+        }
+
+        // 若组合键包含 Win 键，且处于真实系统钩子环境，注入一次 Ctrl 脉冲以中和 Windows 开始菜单
+        if (win && _hookHandle != IntPtr.Zero)
+        {
+            NeutralizeWinKeyStartMenu();
+        }
+
+        var display = FormatWinDisplay(mods, vk);
+        var recordedConfig = new HotkeyConfig
+        {
+            Modifiers = mods,
+            KeyCode = (int)vk,
+            DisplayString = display,
+            IsEnabled = true
+        };
+
+        StopRecording();
+        HotkeyRecorded?.Invoke(this, recordedConfig);
+        return (IntPtr)1;
+    }
+
+    private static void NeutralizeWinKeyStartMenu()
+    {
+        try
+        {
+            var inputs = new NativeMethods.INPUT[2];
+            inputs[0].type = NativeMethods.INPUT_KEYBOARD;
+            inputs[0].u.ki.wVk = NativeMethods.VK_CONTROL;
+            inputs[0].u.ki.wScan = 0x1D;
+
+            inputs[1].type = NativeMethods.INPUT_KEYBOARD;
+            inputs[1].u.ki.wVk = NativeMethods.VK_CONTROL;
+            inputs[1].u.ki.wScan = 0x1D;
+            inputs[1].u.ki.dwFlags = NativeMethods.KEYEVENTF_KEYUP;
+
+            NativeMethods.SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<NativeMethods.INPUT>());
+        }
+        catch { }
     }
 
     private static string FormatWinDisplay(KeyModifiers mods, uint vk)
@@ -406,46 +539,12 @@ public class WindowsHotkeyService : IHotkeyService
         return string.Join(" + ", parts);
     }
 
-    private void NeutralizeWinKey()
-    {
-        OnWinKeyNeutralized?.Invoke();
-
-        // Inject synthetic VK_CONTROL (0x11 with scancode 0x1D) to neutralize Start menu
-        try
-        {
-            var inputs = new NativeMethods.INPUT[2];
-            inputs[0].type = NativeMethods.INPUT_KEYBOARD;
-            inputs[0].u.ki.wVk = NativeMethods.VK_CONTROL;
-            inputs[0].u.ki.wScan = 0x1D;
-
-            inputs[1].type = NativeMethods.INPUT_KEYBOARD;
-            inputs[1].u.ki.wVk = NativeMethods.VK_CONTROL;
-            inputs[1].u.ki.wScan = 0x1D;
-            inputs[1].u.ki.dwFlags = NativeMethods.KEYEVENTF_KEYUP;
-
-            uint sent = NativeMethods.SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<NativeMethods.INPUT>());
-            if (sent == 0)
-            {
-                NativeMethods.keybd_event(NativeMethods.VK_CONTROL, 0x1D, 0, UIntPtr.Zero);
-                NativeMethods.keybd_event(NativeMethods.VK_CONTROL, 0x1D, NativeMethods.KEYEVENTF_KEYUP, UIntPtr.Zero);
-            }
-        }
-        catch
-        {
-            try
-            {
-                NativeMethods.keybd_event(NativeMethods.VK_CONTROL, 0x1D, 0, UIntPtr.Zero);
-                NativeMethods.keybd_event(NativeMethods.VK_CONTROL, 0x1D, NativeMethods.KEYEVENTF_KEYUP, UIntPtr.Zero);
-            }
-            catch { }
-        }
-    }
-
     public void Dispose()
     {
         if (_isDisposed) return;
         _isDisposed = true;
-        Unregister();
+        StopRecording();
+        UnregisterInternal();
         if (_messageHwnd != IntPtr.Zero)
         {
             NativeMethods.DestroyWindow(_messageHwnd);

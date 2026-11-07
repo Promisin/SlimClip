@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
@@ -34,6 +35,8 @@ public partial class SettingsViewModel : ObservableObject
                 _localizationService.SetLanguage(value.Code);
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(RecordHotkeyButtonText));
+                OnPropertyChanged(nameof(HotkeyBoxText));
+                OnPropertyChanged(nameof(HotkeyStatusMessage));
                 LanguageChanged?.Invoke(this, value.Code);
             }
         }
@@ -46,18 +49,73 @@ public partial class SettingsViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(RecordHotkeyButtonText))]
+    [NotifyPropertyChangedFor(nameof(HotkeyBoxText))]
     private bool _isRecordingHotkey;
 
     public string RecordHotkeyButtonText => IsRecordingHotkey
         ? _localizationService["Settings_Hotkey_Recording"]
         : _localizationService["Settings_Hotkey_Change"];
 
+    /// <summary>直触式快捷键录制框内显示的文本：录制态显示提示文案，平时显示当前快捷键。</summary>
+    public string HotkeyBoxText => IsRecordingHotkey
+        ? _localizationService["Settings_Hotkey_Recording"]
+        : HotkeyDisplay;
+
     public string MaxItemsUnitDisplay => _localizationService["Settings_Data_MaxItems_Unit"];
     public string CleanDaysUnitDisplay => _localizationService["Settings_Data_CleanDays_Unit"];
     public string PasteDelayUnitDisplay => _localizationService["Settings_Advanced_PasteDelay_Unit"];
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HotkeyBoxText))]
     private string _hotkeyDisplay;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasHotkeyStatusMessage))]
+    [NotifyPropertyChangedFor(nameof(IsHotkeyErrorStatus))]
+    [NotifyPropertyChangedFor(nameof(NeedsExplorerRestart))]
+    [NotifyPropertyChangedFor(nameof(HotkeyStatusMessage))]
+    private HotkeyRegistrationStatus _hotkeyRegistrationStatus = HotkeyRegistrationStatus.Success;
+
+    public bool HasHotkeyStatusMessage => HotkeyRegistrationStatus != HotkeyRegistrationStatus.Success;
+    public bool IsHotkeyErrorStatus => HotkeyRegistrationStatus == HotkeyRegistrationStatus.OccupiedCannotRegister;
+    public bool NeedsExplorerRestart => HotkeyRegistrationStatus == HotkeyRegistrationStatus.PendingExplorerRestart;
+
+    public string HotkeyStatusMessage => HotkeyRegistrationStatus switch
+    {
+        HotkeyRegistrationStatus.OccupiedCanOverrideSystem => _localizationService["Settings_Hotkey_Status_CanOverride"],
+        HotkeyRegistrationStatus.PendingExplorerRestart => _localizationService["Settings_Hotkey_Status_PendingRestart"],
+        HotkeyRegistrationStatus.OccupiedCannotRegister => _localizationService["Settings_Hotkey_Status_OccupiedError"],
+        _ => string.Empty
+    };
+
+    public bool AllowDisableSystemHotkeys
+    {
+        get => _settingsService.Settings.AllowDisableSystemHotkeys;
+        set
+        {
+            if (_settingsService.Settings.AllowDisableSystemHotkeys != value)
+            {
+                _settingsService.Settings.AllowDisableSystemHotkeys = value;
+                _settingsService.Save();
+                _hotkeyService?.ConfigureSystemHotkeyOverride(
+                    value,
+                    _settingsService.Settings.ManagedDisabledHotkeyChar,
+                    UpdateManagedDisabledHotkeyChar);
+                OnPropertyChanged();
+                HotkeyChanged?.Invoke(this, _settingsService.Settings.Hotkey);
+                RefreshHotkeyRegistrationStatus();
+            }
+        }
+    }
+
+    private void UpdateManagedDisabledHotkeyChar(string managedChar)
+    {
+        if (_settingsService.Settings.ManagedDisabledHotkeyChar != managedChar)
+        {
+            _settingsService.Settings.ManagedDisabledHotkeyChar = managedChar;
+            _settingsService.Save();
+        }
+    }
 
     private readonly IUpdateService _updateService;
 
@@ -111,6 +169,8 @@ public partial class SettingsViewModel : ObservableObject
             OnPropertyChanged(string.Empty);
             OnPropertyChanged(nameof(L));
             OnPropertyChanged(nameof(RecordHotkeyButtonText));
+            OnPropertyChanged(nameof(HotkeyBoxText));
+            OnPropertyChanged(nameof(HotkeyStatusMessage));
             OnPropertyChanged(nameof(MaxItemsUnitDisplay));
             OnPropertyChanged(nameof(CleanDaysUnitDisplay));
             OnPropertyChanged(nameof(PasteDelayUnitDisplay));
@@ -125,13 +185,34 @@ public partial class SettingsViewModel : ObservableObject
 
         if (_hotkeyService != null)
         {
+            _hotkeyService.ConfigureSystemHotkeyOverride(
+                _settingsService.Settings.AllowDisableSystemHotkeys,
+                _settingsService.Settings.ManagedDisabledHotkeyChar,
+                UpdateManagedDisabledHotkeyChar);
             _hotkeyService.HotkeyRecorded += OnPlatformHotkeyRecorded;
+            _hotkeyRegistrationStatus = _hotkeyService.LastRegistrationStatus;
         }
     }
 
     private void OnPlatformHotkeyRecorded(object? sender, HotkeyConfig config)
     {
         ApplyRecordedHotkey(config.Modifiers, config.KeyCode, config.DisplayString);
+    }
+
+    public void RefreshHotkeyRegistrationStatus()
+    {
+        if (_hotkeyService != null)
+        {
+            HotkeyRegistrationStatus = _hotkeyService.LastRegistrationStatus;
+        }
+    }
+
+    [RelayCommand]
+    public void RestartExplorer()
+    {
+        if (_hotkeyService == null) return;
+        _hotkeyService.RestartExplorerAndReRegister();
+        RefreshHotkeyRegistrationStatus();
     }
 
     public bool StartWithSystem
@@ -255,6 +336,19 @@ public partial class SettingsViewModel : ObservableObject
     }
 
     [RelayCommand]
+    public void ToggleRecordingHotkey()
+    {
+        if (IsRecordingHotkey)
+        {
+            StopRecordingHotkey();
+        }
+        else
+        {
+            StartRecordingHotkey();
+        }
+    }
+
+    [RelayCommand]
     public void StartRecordingHotkey()
     {
         IsRecordingHotkey = true;
@@ -284,6 +378,7 @@ public partial class SettingsViewModel : ObservableObject
         HotkeyDisplay = _settingsService.Settings.Hotkey.DisplayString;
         IsRecordingHotkey = false;
         HotkeyChanged?.Invoke(this, _settingsService.Settings.Hotkey);
+        RefreshHotkeyRegistrationStatus();
     }
 
     [RelayCommand]
@@ -296,6 +391,7 @@ public partial class SettingsViewModel : ObservableObject
         HotkeyDisplay = "无";
         IsRecordingHotkey = false;
         HotkeyChanged?.Invoke(this, _settingsService.Settings.Hotkey);
+        RefreshHotkeyRegistrationStatus();
     }
 
     public void ApplyRecordedHotkey(KeyModifiers modifiers, int keyCode, string display)
@@ -317,6 +413,7 @@ public partial class SettingsViewModel : ObservableObject
         HotkeyDisplay = display;
         IsRecordingHotkey = false;
         HotkeyChanged?.Invoke(this, _settingsService.Settings.Hotkey);
+        RefreshHotkeyRegistrationStatus();
     }
 
     public event EventHandler<HotkeyConfig>? HotkeyChanged;
@@ -471,7 +568,7 @@ public partial class SettingsViewModel : ObservableObject
     {
         var asm = System.Reflection.Assembly.GetEntryAssembly() ?? typeof(SettingsViewModel).Assembly;
         var ver = asm.GetName().Version;
-        return ver != null ? $"v{ver.Major}.{ver.Minor}.{ver.Build}" : "v1.0.4";
+        return ver != null ? $"v{ver.Major}.{ver.Minor}.{ver.Build}" : "v1.0.5";
     }
 
     private static string GetPlatformDisplay()

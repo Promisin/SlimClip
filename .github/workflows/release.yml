@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: 'Tag name to release (e.g. v1.0.3)'
+        description: 'Tag name to release (e.g. v1.0.5)'
         required: true
-        default: 'v1.0.3'
+        default: 'v1.0.5'
 
 permissions:
   contents: write
@@ -26,9 +26,6 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-
-      - name: Install Inno Setup
-        run: choco install innosetup -y --no-progress
 
       - name: Determine Version
         id: get_version
@@ -55,6 +52,7 @@ jobs:
             -r win-x64 `
             --self-contained true `
             -p:PublishSingleFile=true `
+            -p:EnableCompressionInSingleFile=true `
             -p:IncludeNativeLibrariesForSelfExtract=true `
             -p:PublishReadyToRun=true `
             -o $staging
@@ -76,19 +74,26 @@ jobs:
             Compress-Archive -Path ".publish-staging/symbols/*" -DestinationPath "$dist/SlimClip-v$ver-windows-x64-symbols.zip" -Force
           }
 
-      - name: Compile Inno Setup Installer
+      - name: Compile Custom Setup Installer
         shell: pwsh
         run: |
           $ver = $env:VERSION
           $dist = "dist"
-          $sourceDir = Resolve-Path ".publish-staging/windows-x64"
-          $outDir = Resolve-Path $dist
-          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
-          if (-not (Test-Path $iscc)) {
-            $iscc = (Get-Command iscc.exe).Source
-          }
+          $payloadZip = [System.IO.Path]::GetFullPath(".publish-staging/payload.zip")
+          $bootOut = ".publish-staging/bootstrapper-out"
 
-          & $iscc /dMyAppVersion="$ver" /dSourceDir="$sourceDir" /o"$outDir" installer/setup.iss
+          Compress-Archive -Path ".publish-staging/windows-x64/*" -DestinationPath $payloadZip -CompressionLevel Optimal -Force
+
+          dotnet publish src/SlimClip.SetupBootstrapper/SlimClip.SetupBootstrapper.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:EnableCompressionInSingleFile=true `
+            -p:PayloadZipPath="$payloadZip" `
+            -o $bootOut
+
+          Copy-Item -Path "$bootOut/SlimClip.SetupBootstrapper.exe" -Destination "$dist/SlimClip-v$ver-windows-x64-setup.exe" -Force
 
       - name: Upload Windows Artifacts
         uses: actions/upload-artifact@v4

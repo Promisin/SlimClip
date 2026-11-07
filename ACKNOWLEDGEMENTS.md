@@ -24,15 +24,6 @@ SlimClip 是基于 .NET 与跨平台生态构建的开源项目。在此，我�
 
 ---
 
-## 构建与打包工具
-
-| 项目名称 | 许可证 | 官方网站 / 代码仓库 | 用途说明 |
-| :--- | :--- | :--- | :--- |
-| **Inno Setup** | [Inno Setup License](https://jrsoftware.org/files/is/license.txt) | [jrsoftware/issrc](https://jrsoftware.org/isinfo.php) | Windows 平台安装包制作与打包程序 |
-| **Inno Setup 简体中文翻译** | [MIT License](https://github.com/kira-96/Inno-Setup-Chinese-Simplified-Translation/blob/main/LICENSE) | [kira-96/Inno-Setup-Chinese-Simplified-Translation](https://github.com/kira-96/Inno-Setup-Chinese-Simplified-Translation) | Windows 安装向导官方简体中文语言资源 |
-
----
-
 ## 免责声明 (Disclaimer)
 
 本项目按照“现状”（AS-IS）提供，不包含任何明示或暗示的担保（包括但不限于适销性、特定用途适用性及不侵权担保）。在任何情况下，作者或版权持有者均不对因使用本软件或本软件中的任何数据所导致的任何索赔、损失或连带法律责任负责。
