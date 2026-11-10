@@ -64,6 +64,10 @@
   "Settings_Appearance_System": "System Default",
   "Settings_Appearance_Light": "Light Mode",
   "Settings_Appearance_Dark": "Dark Mode",
+  "Settings_Appearance_Backdrop": "Backdrop Style",
+  "Settings_Appearance_Backdrop_Desc": "Switch between translucent backdrop and solid matte surface",
+  "Settings_Appearance_Translucent": "Translucent",
+  "Settings_Appearance_Solid": "Solid",
 
   "Settings_Hotkey_Title": "Summon Hotkey",
   "Settings_Hotkey_Desc": "Click the shortcut box below to record a new key chord and summon the panel near cursor",

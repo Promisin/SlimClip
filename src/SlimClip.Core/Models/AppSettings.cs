@@ -9,6 +9,12 @@ public enum AppThemeMode
     Dark = 2
 }
 
+public enum AppBackdropStyle
+{
+    Translucent = 0,
+    Solid = 1
+}
+
 public class AppSettings
 {
     public HotkeyConfig Hotkey { get; set; } = new();
@@ -20,6 +26,7 @@ public class AppSettings
     public int CleanPeriodDays { get; set; } = 7;
     public bool StartEmptyHistory { get; set; }
     public AppThemeMode ThemeMode { get; set; } = AppThemeMode.System;
+    public AppBackdropStyle BackdropStyle { get; set; } = AppBackdropStyle.Translucent;
     public string Language { get; set; } = string.Empty;
     public int PasteDelayMs { get; set; } = RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ? 80 : 60;
     public bool AllowDisableSystemHotkeys { get; set; }

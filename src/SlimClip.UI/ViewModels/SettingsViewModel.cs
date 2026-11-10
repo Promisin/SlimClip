@@ -259,6 +259,23 @@ public partial class SettingsViewModel : ObservableObject
 
     public event EventHandler<AppThemeMode>? ThemeModeChanged;
 
+    public AppBackdropStyle BackdropStyle
+    {
+        get => _settingsService.Settings.BackdropStyle;
+        set
+        {
+            if (_settingsService.Settings.BackdropStyle != value)
+            {
+                _settingsService.Settings.BackdropStyle = value;
+                _settingsService.Save();
+                OnPropertyChanged();
+                BackdropStyleChanged?.Invoke(this, value);
+            }
+        }
+    }
+
+    public event EventHandler<AppBackdropStyle>? BackdropStyleChanged;
+
     public int MaxHistoryItems
     {
         get => _settingsService.Settings.MaxHistoryItems;

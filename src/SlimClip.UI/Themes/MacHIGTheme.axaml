@@ -4,6 +4,7 @@
     <!-- macOS HIG + Liquid Glass Geometry & Metrics (Theme Independent) -->
     <CornerRadius x:Key="WindowCornerRadius">14</CornerRadius>
     <Thickness x:Key="WindowBorderThickness">0.5</Thickness>
+    <Thickness x:Key="WindowShadowMargin">0</Thickness>
 
     <CornerRadius x:Key="SearchBoxCornerRadius">16</CornerRadius>
     <x:Double x:Key="SearchBoxHeight">32</x:Double>
@@ -49,6 +50,8 @@
             <Color x:Key="AcrylicTintColor">#0A0A0C</Color>
             <x:Double x:Key="AcrylicTintOpacity">0.70</x:Double>
             <x:Double x:Key="AcrylicMaterialOpacity">0.22</x:Double>
+            <BoxShadows x:Key="WindowElevationShadow">0 0 0 #00000000</BoxShadows>
+            <SolidColorBrush x:Key="WindowInnerRimBrush" Color="Transparent" />
 
             <SolidColorBrush x:Key="InkBrush" Color="#FFFFFF" />
             <SolidColorBrush x:Key="PaperBrush" Color="#141416" />
@@ -85,6 +88,8 @@
             <Color x:Key="AcrylicTintColor">#0A0A0C</Color>
             <x:Double x:Key="AcrylicTintOpacity">0.70</x:Double>
             <x:Double x:Key="AcrylicMaterialOpacity">0.22</x:Double>
+            <BoxShadows x:Key="WindowElevationShadow">0 0 0 #00000000</BoxShadows>
+            <SolidColorBrush x:Key="WindowInnerRimBrush" Color="Transparent" />
 
             <SolidColorBrush x:Key="InkBrush" Color="#FFFFFF" />
             <SolidColorBrush x:Key="PaperBrush" Color="#141416" />
@@ -121,6 +126,8 @@
             <Color x:Key="AcrylicTintColor">#FFFFFF</Color>
             <x:Double x:Key="AcrylicTintOpacity">0.70</x:Double>
             <x:Double x:Key="AcrylicMaterialOpacity">0.18</x:Double>
+            <BoxShadows x:Key="WindowElevationShadow">0 0 0 #00000000</BoxShadows>
+            <SolidColorBrush x:Key="WindowInnerRimBrush" Color="Transparent" />
 
             <SolidColorBrush x:Key="InkBrush" Color="#0A0A0A" />
             <SolidColorBrush x:Key="PaperBrush" Color="#FFFFFF" />
@@ -144,8 +151,8 @@
             <SolidColorBrush x:Key="AccentBrush" Color="#0A0A0A" />
             <SolidColorBrush x:Key="DestructiveBrush" Color="#E7000B" />
             <SolidColorBrush x:Key="TextPrimaryBrush" Color="#0A0A0A" />
-            <SolidColorBrush x:Key="TextSecondaryBrush" Color="#383838" />
-            <SolidColorBrush x:Key="TextTertiaryBrush" Color="#595959" />
+            <SolidColorBrush x:Key="TextSecondaryBrush" Color="#262629" />
+            <SolidColorBrush x:Key="TextTertiaryBrush" Color="#4A4A50" />
             <SolidColorBrush x:Key="DividerBrush" Color="#E5E5E5" />
             <SolidColorBrush x:Key="ItemBorderBrush" Color="Transparent" />
             <SolidColorBrush x:Key="FooterBackground" Color="#E6F5F5F5" />

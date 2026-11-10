@@ -194,7 +194,10 @@
         </Style>
     </Window.Styles>
 
-    <Panel>
+    <Panel Margin="{DynamicResource WindowShadowMargin}">
+        <Border CornerRadius="{DynamicResource WindowCornerRadius}"
+                BoxShadow="{DynamicResource WindowElevationShadow}"
+                IsHitTestVisible="False" />
         <Border Background="{DynamicResource SurfaceBackground}"
                 CornerRadius="{DynamicResource WindowCornerRadius}"
                 BorderBrush="{DynamicResource WindowBorderBrush}"
@@ -651,5 +654,10 @@
 
         </Grid>
     </Border>
+    <Border CornerRadius="{DynamicResource WindowCornerRadius}"
+            BorderBrush="{DynamicResource WindowInnerRimBrush}"
+            BorderThickness="1"
+            Margin="1"
+            IsHitTestVisible="False" />
     </Panel>
 </Window>

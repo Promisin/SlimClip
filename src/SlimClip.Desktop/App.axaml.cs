@@ -38,6 +38,7 @@ public partial class App : Application
 
     private ClipboardPanel? _clipboardPanel;
     private SettingsWindow? _settingsWindow;
+    private ResourceDictionary? _solidBackdropDict;
     private TrayIcon? _trayIcon;
     private NativeMenuItem? _showMenuItem;
     private NativeMenuItem? _settingsMenuItem;
@@ -163,6 +164,7 @@ public partial class App : Application
                 UpdateTrayMenuHotkey(cfg);
             };
             _settingsViewModel.ThemeModeChanged += (s, mode) => ApplyThemeMode(mode);
+            _settingsViewModel.BackdropStyleChanged += (s, style) => ApplyBackdropStyle(style);
             _settingsViewModel.DataCleared += async (s, e) =>
             {
                 await _mainViewModel.InitializeAsync();
@@ -176,6 +178,7 @@ public partial class App : Application
                 }
             };
 
+            ApplyBackdropStyle(_settingsService.Settings.BackdropStyle);
             ApplyThemeMode(_settingsService.Settings.ThemeMode);
 
             // 4. Hotkey Setup
@@ -291,11 +294,16 @@ public partial class App : Application
         var lang = platformHook.GetSystemPreferredLanguage() ?? string.Empty;
         var loc = new LocalizationService(lang);
 
+        var setupStyle = WindowsPlatformChromeHelper.IsWindows10OrOlder()
+            ? AppBackdropStyle.Solid
+            : AppBackdropStyle.Translucent;
+        ApplyBackdropStyle(setupStyle);
         ApplyThemeMode(AppThemeMode.System);
 
         var setupService = new WindowsSetupService(loc);
         var vm = new SetupViewModel(setupService, sourceDir, isUninstall, loc);
         var setupWindow = new SetupWindow(vm);
+        WindowsPlatformChromeHelper.ConfigureWindowChrome(setupWindow, setupStyle);
         AttachPlatformBackdrop(setupWindow);
 
         var appIcon = LoadAppIcon();
@@ -316,6 +324,7 @@ public partial class App : Application
         if (_settingsWindow == null)
         {
             _settingsWindow = new SettingsWindow(_settingsViewModel);
+            WindowsPlatformChromeHelper.ConfigureWindowChrome(_settingsWindow, _settingsService.Settings.BackdropStyle);
             AttachPlatformBackdrop(_settingsWindow);
             var appIcon = LoadAppIcon();
             if (appIcon != null)
@@ -578,44 +587,93 @@ public partial class App : Application
         return MacLiquidGlassHelper.ResolveNSWindow(platformHandle.Handle);
     }
 
-    private void AttachPlatformBackdrop(Window window)
+    private void ApplyBackdropStyle(AppBackdropStyle style)
     {
-        void ApplyBackdrop()
+        bool isSolid = style == AppBackdropStyle.Solid;
+        bool isWin = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+        bool isWin10 = WindowsPlatformChromeHelper.IsWindows10OrOlder();
+
+        try
         {
-            var handle = window.TryGetPlatformHandle()?.Handle;
-            if (handle == null || handle.Value == IntPtr.Zero)
-                return;
-
-#if WINDOWS
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            if (isSolid)
             {
-                var isDark = ActualThemeVariant == ThemeVariant.Dark ||
-                             (ActualThemeVariant == ThemeVariant.Default && _settingsService.Settings.ThemeMode != AppThemeMode.Light);
-                WindowsAcrylicHelper.ApplyDesktopAcrylic(handle.Value, isDark);
-            }
-#endif
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            {
-                var isDark = _settingsService.Settings.ThemeMode switch
+                if (_solidBackdropDict == null)
                 {
-                    AppThemeMode.Light => false,
-                    AppThemeMode.Dark => true,
-                    _ => ActualThemeVariant == ThemeVariant.Dark || MacLiquidGlassHelper.IsSystemDark()
-                };
-
-                var targetHandle = GetNSWindow(window.TryGetPlatformHandle());
-                if (targetHandle == IntPtr.Zero)
-                    targetHandle = handle.Value;
-
-                MacLiquidGlassHelper.ApplyLiquidGlass(targetHandle, isDark);
+                    var uri = new Uri("avares://SlimClip.UI/Themes/Fluent2Win10Override.axaml");
+                    _solidBackdropDict = (ResourceDictionary)AvaloniaXamlLoader.Load(uri);
+                }
+                if (!Resources.MergedDictionaries.Contains(_solidBackdropDict))
+                {
+                    Resources.MergedDictionaries.Add(_solidBackdropDict);
+                }
+            }
+            else if (_solidBackdropDict != null)
+            {
+                Resources.MergedDictionaries.Remove(_solidBackdropDict);
             }
         }
+        catch { }
 
-        window.Opened += (s, e) => ApplyBackdrop();
-        window.Activated += (s, e) => ApplyBackdrop();
+        var metrics = WindowsPlatformChromeHelper.CalculateChromeMetrics(
+            isWin, isWin10, style, 420, 560, 340, 400, 800, 1200);
+
+        Resources["WindowCornerRadius"] = metrics.WindowCornerRadius;
+        Resources["WindowShadowMargin"] = metrics.ShadowMargin;
+
+        if (_clipboardPanel != null)
+        {
+            WindowsPlatformChromeHelper.ConfigureWindowChrome(_clipboardPanel, style);
+            ApplyWindowPlatformBackdrop(_clipboardPanel);
+        }
+
+        if (_settingsWindow != null)
+        {
+            WindowsPlatformChromeHelper.ConfigureWindowChrome(_settingsWindow, style);
+            ApplyWindowPlatformBackdrop(_settingsWindow);
+        }
+    }
+
+    private void ApplyWindowPlatformBackdrop(Window window)
+    {
+        var handle = window.TryGetPlatformHandle()?.Handle;
+        if (handle == null || handle.Value == IntPtr.Zero)
+            return;
+
+        bool isSolid = (_settingsService?.Settings.BackdropStyle ??
+                        (WindowsPlatformChromeHelper.IsWindows10OrOlder() ? AppBackdropStyle.Solid : AppBackdropStyle.Translucent)) == AppBackdropStyle.Solid;
+
+#if WINDOWS
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            var isDark = ActualThemeVariant == ThemeVariant.Dark ||
+                         (ActualThemeVariant == ThemeVariant.Default && (_settingsService?.Settings.ThemeMode ?? AppThemeMode.System) != AppThemeMode.Light);
+            WindowsAcrylicHelper.ApplyDesktopAcrylic(handle.Value, isDark, isSolid);
+        }
+#endif
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            var isDark = (_settingsService?.Settings.ThemeMode ?? AppThemeMode.System) switch
+            {
+                AppThemeMode.Light => false,
+                AppThemeMode.Dark => true,
+                _ => ActualThemeVariant == ThemeVariant.Dark || MacLiquidGlassHelper.IsSystemDark()
+            };
+
+            var targetHandle = GetNSWindow(window.TryGetPlatformHandle());
+            if (targetHandle == IntPtr.Zero)
+                targetHandle = handle.Value;
+
+            MacLiquidGlassHelper.ApplyLiquidGlass(targetHandle, isDark, isSolid);
+        }
+    }
+
+    private void AttachPlatformBackdrop(Window window)
+    {
+        window.Opened += (s, e) => ApplyWindowPlatformBackdrop(window);
+        window.Activated += (s, e) => ApplyWindowPlatformBackdrop(window);
         if (window.IsLoaded)
         {
-            ApplyBackdrop();
+            ApplyWindowPlatformBackdrop(window);
         }
     }
 

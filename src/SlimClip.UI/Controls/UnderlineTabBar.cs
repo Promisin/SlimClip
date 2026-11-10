@@ -147,6 +147,7 @@ public class UnderlineTabBar : ItemsControl
         base.OnAttachedToVisualTree(e);
         LayoutUpdated += OnLayoutUpdated;
         ActualThemeVariantChanged += OnThemeVariantChanged;
+        ResourcesChanged += OnResourcesChanged;
         UpdateIndicatorBrush();
         SyncInitialSelection();
     }
@@ -156,12 +157,22 @@ public class UnderlineTabBar : ItemsControl
         base.OnDetachedFromVisualTree(e);
         LayoutUpdated -= OnLayoutUpdated;
         ActualThemeVariantChanged -= OnThemeVariantChanged;
+        ResourcesChanged -= OnResourcesChanged;
         _animator?.Cancel();
+    }
+
+    private void OnResourcesChanged(object? sender, ResourcesChangedEventArgs e)
+    {
+        OnThemeVariantChanged(sender, EventArgs.Empty);
     }
 
     private void OnThemeVariantChanged(object? sender, EventArgs e)
     {
         UpdateIndicatorBrush();
+        foreach (var item in GetTabItems())
+        {
+            item.UpdateVisualState();
+        }
     }
 
     private void OnLoaded(object? sender, RoutedEventArgs e)
@@ -180,11 +191,13 @@ public class UnderlineTabBar : ItemsControl
             return;
         }
 
-        if (this.TryFindResource("AccentBrush", out var res) && res is IBrush b)
+        var theme = ActualThemeVariant;
+
+        if (this.TryFindResource("AccentBrush", theme, out var res) && res is IBrush b)
         {
             _indicator.Background = b;
         }
-        else if (this.TryFindResource("ActiveChipBackground", out var chipBg) && chipBg is IBrush cb)
+        else if (this.TryFindResource("ActiveChipBackground", theme, out var chipBg) && chipBg is IBrush cb)
         {
             _indicator.Background = cb;
         }

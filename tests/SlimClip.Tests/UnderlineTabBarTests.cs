@@ -604,4 +604,55 @@ public class UnderlineTabBarTests
             window.Close();
         }
     }
+
+    [Fact]
+    public void UnderlineTabItem_And_IconButton_Must_Update_Foreground_When_ThemeVariant_Changes_To_Light()
+    {
+        var bar = new UnderlineTabBar();
+        var itemSelected = new UnderlineTabItem { Content = "全部", Value = "All" };
+        var itemUnselected = new UnderlineTabItem { Content = "文本", Value = "Text" };
+        bar.Items.Add(itemSelected);
+        bar.Items.Add(itemUnselected);
+        bar.SelectedValue = "All";
+
+        var iconBtn = new IconButton { IconKind = "Settings" };
+
+        var stack = new StackPanel { Children = { bar, iconBtn } };
+        var window = new Window
+        {
+            Content = stack,
+            RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Dark
+        };
+
+        var themeUri = new Uri("avares://SlimClip.UI/Themes/Fluent2Theme.axaml");
+        window.Resources.MergedDictionaries.Add((ResourceDictionary)Avalonia.Markup.Xaml.AvaloniaXamlLoader.Load(themeUri));
+
+        window.Show();
+        window.UpdateLayout();
+
+        try
+        {
+            // In Dark mode: Selected tab is #FFFFFF, Unselected tab is #CCCCCC
+            var darkSelectedColor = Assert.IsAssignableFrom<ISolidColorBrush>(itemSelected.Foreground).Color;
+            var darkUnselectedColor = Assert.IsAssignableFrom<ISolidColorBrush>(itemUnselected.Foreground).Color;
+            Assert.Equal(Color.Parse("#FFFFFF"), darkSelectedColor);
+            Assert.Equal(Color.Parse("#CCCCCC"), darkUnselectedColor);
+
+            // Switch to Light mode without hovering or clicking tabs
+            window.RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Light;
+            window.UpdateLayout();
+
+            var lightSelectedColor = Assert.IsAssignableFrom<ISolidColorBrush>(itemSelected.Foreground).Color;
+            var lightUnselectedColor = Assert.IsAssignableFrom<ISolidColorBrush>(itemUnselected.Foreground).Color;
+
+            // In Light mode: Selected must be dark ink (#0A0A0A), Unselected must be dark charcoal (not #CCCCCC!)
+            Assert.Equal(Color.Parse("#0A0A0A"), lightSelectedColor);
+            Assert.True(lightUnselectedColor.R < 0x50 && lightUnselectedColor.G < 0x50 && lightUnselectedColor.B < 0x50,
+                $"Light mode unselected tab color {lightUnselectedColor} is too light/blurry!");
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
 }

@@ -140,7 +140,7 @@ public static class MacLiquidGlassHelper
         return IntPtr.Zero;
     }
 
-    public static void ApplyLiquidGlass(IntPtr handle, bool? isDark = null)
+    public static void ApplyLiquidGlass(IntPtr handle, bool? isDark = null, bool isSolid = false)
     {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.OSX) || handle == IntPtr.Zero)
             return;
@@ -156,7 +156,7 @@ public static class MacLiquidGlassHelper
 
             bool dark = isDark ?? IsSystemDark();
 
-            // 1. Make window transparent so the backdrop blur shines through
+            // 1. Make window transparent so the backdrop blur or rounded solid surface shines through
             var setOpaqueSel = MacNativeMethods.sel_registerName("setOpaque:");
             MacNativeMethods.objc_msgSend_void_bool(nsWindow, setOpaqueSel, false);
 
@@ -198,6 +198,29 @@ public static class MacLiquidGlassHelper
                 MacNativeMethods.objc_msgSend_void(contentView, setAppearanceSel, appearance);
             }
 
+            var setHiddenSel = MacNativeMethods.sel_registerName("setHidden:");
+
+            // If user selected Solid backdrop style, hide any native glass/blur views while keeping native 14px rounded shadow
+            if (isSolid)
+            {
+                var existingGlass = FindGlassEffectView(contentView);
+                if (existingGlass != IntPtr.Zero)
+                {
+                    MacNativeMethods.objc_msgSend_void_bool(existingGlass, setHiddenSel, true);
+                }
+
+                foreach (var ev in FindAllVisualEffectViews(contentView))
+                {
+                    MacNativeMethods.objc_msgSend_void_bool(ev, setHiddenSel, true);
+                }
+
+                var setHasShadowSolidSel = MacNativeMethods.sel_registerName("setHasShadow:");
+                MacNativeMethods.objc_msgSend_void_bool(nsWindow, setHasShadowSolidSel, true);
+                var invalidateShadowSolidSel = MacNativeMethods.sel_registerName("invalidateShadow");
+                MacNativeMethods.objc_msgSend_void_noargs(nsWindow, invalidateShadowSolidSel);
+                return;
+            }
+
             // 3. Get contentView bounds so effectView covers the exact window surface
             var boundsSel = MacNativeMethods.sel_registerName("bounds");
             var bounds = MacNativeMethods.objc_msgSend_CGRect(contentView, boundsSel);
@@ -208,7 +231,6 @@ public static class MacLiquidGlassHelper
 
             var glassCls = MacNativeMethods.objc_getClass("NSGlassEffectView");
             var setFrameSel = MacNativeMethods.sel_registerName("setFrame:");
-            var setHiddenSel = MacNativeMethods.sel_registerName("setHidden:");
             var setNeedsDisplaySel = MacNativeMethods.sel_registerName("setNeedsDisplay:");
             var setCornerRadiusSel = MacNativeMethods.sel_registerName("setCornerRadius:");
 

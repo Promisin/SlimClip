@@ -64,6 +64,10 @@
   "Settings_Appearance_System": "跟随系统",
   "Settings_Appearance_Light": "浅色模式",
   "Settings_Appearance_Dark": "深色模式",
+  "Settings_Appearance_Backdrop": "主题风格",
+  "Settings_Appearance_Backdrop_Desc": "切换窗口背景的透光材质与表面质感",
+  "Settings_Appearance_Translucent": "通透",
+  "Settings_Appearance_Solid": "实色",
 
   "Settings_Hotkey_Title": "唤出快捷键",
   "Settings_Hotkey_Desc": "点击下方快捷键框直接录入新组合键，随时在光标位置唤出剪贴板面板",

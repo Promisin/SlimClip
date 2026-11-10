@@ -16,6 +16,7 @@ using Avalonia.VisualTree;
 using SlimClip.Core.Models;
 using SlimClip.UI.Animation;
 using SlimClip.UI.Converters;
+using SlimClip.UI.Helpers;
 using SlimClip.UI.ViewModels;
 
 namespace SlimClip.UI.Views;
@@ -29,6 +30,7 @@ public partial class SettingsWindow : Window
     public SettingsWindow()
     {
         InitializeComponent();
+        WindowsPlatformChromeHelper.ConfigureWindowChrome(this);
         Avalonia.Media.TextOptions.SetTextRenderingMode(this, Avalonia.Media.TextRenderingMode.SubpixelAntialias);
 
         var tabBar = this.FindControl<SlimClip.UI.Controls.UnderlineTabBar>("SettingsTabBar");
@@ -100,6 +102,15 @@ public partial class SettingsWindow : Window
                 break;
         }
 
+        if (viewModel.BackdropStyle == AppBackdropStyle.Solid)
+        {
+            BackdropSolidRadio.IsChecked = true;
+        }
+        else
+        {
+            BackdropTranslucentRadio.IsChecked = true;
+        }
+
         viewModel.CopyToClipboardRequested += async text =>
         {
             if (Clipboard != null)
@@ -155,6 +166,16 @@ public partial class SettingsWindow : Window
     private void OnThemeDarkChecked(object? sender, RoutedEventArgs e)
     {
         if (sender is RadioButton { IsChecked: true } && DataContext is SettingsViewModel vm) vm.ThemeMode = AppThemeMode.Dark;
+    }
+
+    private void OnBackdropTranslucentChecked(object? sender, RoutedEventArgs e)
+    {
+        if (sender is RadioButton { IsChecked: true } && DataContext is SettingsViewModel vm) vm.BackdropStyle = AppBackdropStyle.Translucent;
+    }
+
+    private void OnBackdropSolidChecked(object? sender, RoutedEventArgs e)
+    {
+        if (sender is RadioButton { IsChecked: true } && DataContext is SettingsViewModel vm) vm.BackdropStyle = AppBackdropStyle.Solid;
     }
 
     private void OnClearAllDataClicked(object? sender, RoutedEventArgs e)

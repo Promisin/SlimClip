@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using SlimClip.UI.Helpers;
 using SlimClip.UI.ViewModels;
 
 namespace SlimClip.UI.Views;
@@ -13,6 +14,7 @@ public partial class SetupWindow : Window
     public SetupWindow()
     {
         InitializeComponent();
+        WindowsPlatformChromeHelper.ConfigureWindowChrome(this);
         Avalonia.Media.TextOptions.SetTextRenderingMode(this, Avalonia.Media.TextRenderingMode.SubpixelAntialias);
 
         var titleBar = this.FindControl<Border>("TitleBar");

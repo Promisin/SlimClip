@@ -117,6 +117,8 @@ public class UnderlineTabItem : ContentControl
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
+        ActualThemeVariantChanged += OnThemeVariantChanged;
+        ResourcesChanged += OnResourcesChanged;
         var parentBar = this.FindAncestorOfType<UnderlineTabBar>();
         if (parentBar != null && !string.IsNullOrEmpty(parentBar.SelectedValue))
         {
@@ -125,6 +127,23 @@ public class UnderlineTabItem : ContentControl
                 IsSelected = true;
             }
         }
+        UpdateVisualState();
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        ActualThemeVariantChanged -= OnThemeVariantChanged;
+        ResourcesChanged -= OnResourcesChanged;
+    }
+
+    private void OnThemeVariantChanged(object? sender, EventArgs e)
+    {
+        UpdateVisualState();
+    }
+
+    private void OnResourcesChanged(object? sender, ResourcesChangedEventArgs e)
+    {
         UpdateVisualState();
     }
 
@@ -156,8 +175,10 @@ public class UnderlineTabItem : ContentControl
     {
         if (_hoverBorder == null) return;
 
+        var theme = ActualThemeVariant;
+
         // Resolve hover background brush from theme resources
-        if (this.TryFindResource("CardHoverBrush", out var hoverBrush) && hoverBrush is IBrush hb)
+        if (this.TryFindResource("CardHoverBrush", theme, out var hoverBrush) && hoverBrush is IBrush hb)
         {
             _hoverBorder.Background = hb;
         }
@@ -175,7 +196,7 @@ public class UnderlineTabItem : ContentControl
         // Dynamic text foreground
         if (IsSelected || IsPointerOver)
         {
-            if (this.TryFindResource("TextPrimaryBrush", out var primaryBrush) && primaryBrush is IBrush pb)
+            if (this.TryFindResource("TextPrimaryBrush", theme, out var primaryBrush) && primaryBrush is IBrush pb)
             {
                 Foreground = pb;
             }
@@ -186,7 +207,7 @@ public class UnderlineTabItem : ContentControl
         }
         else
         {
-            if (this.TryFindResource("TextSecondaryBrush", out var secondaryBrush) && secondaryBrush is IBrush sb)
+            if (this.TryFindResource("TextSecondaryBrush", theme, out var secondaryBrush) && secondaryBrush is IBrush sb)
             {
                 Foreground = sb;
             }

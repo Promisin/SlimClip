@@ -1,0 +1,109 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Windows 10 (Build < 22000) 4D Precision Surface Override -->
+    <!-- Eliminates DWM rectangular acrylic corner bleed by providing a self-rendered -->
+    <!-- rounded shadow margin + micro-gradient surface + inner specular rim + 3-tier depth -->
+    <Thickness x:Key="WindowShadowMargin">14</Thickness>
+
+    <ResourceDictionary.ThemeDictionaries>
+        <!-- Default / Dark: Anodized Obsidian Aluminum Blueprint -->
+        <ResourceDictionary x:Key="Default">
+            <!-- 1. Layered Rounded Drop Shadow (Contact Shadow + Ambient Diffusion) -->
+            <BoxShadows x:Key="WindowElevationShadow">0 2 6 #45000000, 0 10 24 -4 #78000000</BoxShadows>
+
+            <!-- 2. Micro-Gradient Surface (Top-Lit Matte Obsidian: #18181D -> #111114) -->
+            <LinearGradientBrush x:Key="SurfaceBackground" StartPoint="0%,0%" EndPoint="0%,100%">
+                <GradientStop Color="#FC18181D" Offset="0.0" />
+                <GradientStop Color="#FC131317" Offset="0.45" />
+                <GradientStop Color="#FE101013" Offset="1.0" />
+            </LinearGradientBrush>
+
+            <!-- 3. Dual-Rim Hairline (Outer Crisp Cut + Inner Top Specular Rim) -->
+            <SolidColorBrush x:Key="WindowBorderBrush" Color="#2C2C32" />
+            <LinearGradientBrush x:Key="WindowInnerRimBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+                <GradientStop Color="#22FFFFFF" Offset="0.0" />
+                <GradientStop Color="#0AFFFFFF" Offset="0.3" />
+                <GradientStop Color="#03FFFFFF" Offset="1.0" />
+            </LinearGradientBrush>
+
+            <!-- 4. 3-Tier Depth Hierarchy: Recessed (#0B0B0E) -> Base (#131317) -> Elevated Card (#1C1C22) -->
+            <SolidColorBrush x:Key="SearchBackground" Color="#0B0B0E" />
+            <SolidColorBrush x:Key="SearchBorderBrush" Color="#242429" />
+            <SolidColorBrush x:Key="CardBackground" Color="#1C1C22" />
+            <SolidColorBrush x:Key="CardBorderBrush" Color="#2C2C34" />
+            <SolidColorBrush x:Key="CardHoverBrush" Color="#24242C" />
+            <SolidColorBrush x:Key="CardSelectedBrush" Color="#2C2C36" />
+            <SolidColorBrush x:Key="KeyHintBackground" Color="#18181D" />
+            <SolidColorBrush x:Key="KeyHintBorderBrush" Color="#2E2E36" />
+            <SolidColorBrush x:Key="FooterBackground" Color="#0D0D10" />
+            <SolidColorBrush x:Key="FlyoutBackground" Color="#18181D" />
+        </ResourceDictionary>
+
+        <ResourceDictionary x:Key="Dark">
+            <!-- 1. Layered Rounded Drop Shadow -->
+            <BoxShadows x:Key="WindowElevationShadow">0 2 6 #45000000, 0 10 24 -4 #78000000</BoxShadows>
+
+            <!-- 2. Micro-Gradient Surface -->
+            <LinearGradientBrush x:Key="SurfaceBackground" StartPoint="0%,0%" EndPoint="0%,100%">
+                <GradientStop Color="#FC18181D" Offset="0.0" />
+                <GradientStop Color="#FC131317" Offset="0.45" />
+                <GradientStop Color="#FE101013" Offset="1.0" />
+            </LinearGradientBrush>
+
+            <!-- 3. Dual-Rim Hairline -->
+            <SolidColorBrush x:Key="WindowBorderBrush" Color="#2C2C32" />
+            <LinearGradientBrush x:Key="WindowInnerRimBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+                <GradientStop Color="#22FFFFFF" Offset="0.0" />
+                <GradientStop Color="#0AFFFFFF" Offset="0.3" />
+                <GradientStop Color="#03FFFFFF" Offset="1.0" />
+            </LinearGradientBrush>
+
+            <!-- 4. 3-Tier Depth Hierarchy -->
+            <SolidColorBrush x:Key="SearchBackground" Color="#0B0B0E" />
+            <SolidColorBrush x:Key="SearchBorderBrush" Color="#242429" />
+            <SolidColorBrush x:Key="CardBackground" Color="#1C1C22" />
+            <SolidColorBrush x:Key="CardBorderBrush" Color="#2C2C34" />
+            <SolidColorBrush x:Key="CardHoverBrush" Color="#24242C" />
+            <SolidColorBrush x:Key="CardSelectedBrush" Color="#2C2C36" />
+            <SolidColorBrush x:Key="KeyHintBackground" Color="#18181D" />
+            <SolidColorBrush x:Key="KeyHintBorderBrush" Color="#2E2E36" />
+            <SolidColorBrush x:Key="FooterBackground" Color="#0D0D10" />
+            <SolidColorBrush x:Key="FlyoutBackground" Color="#18181D" />
+        </ResourceDictionary>
+
+        <!-- Light: High-Weight Frosted Cardstock Blueprint -->
+        <ResourceDictionary x:Key="Light">
+            <!-- 1. Layered Rounded Drop Shadow -->
+            <BoxShadows x:Key="WindowElevationShadow">0 2 6 #14000000, 0 10 24 -4 #28000000</BoxShadows>
+
+            <!-- 2. Micro-Gradient Surface (Cool Alabaster -> Warm Architectural Paper: #FAFBFC -> #F1F2F6) -->
+            <LinearGradientBrush x:Key="SurfaceBackground" StartPoint="0%,0%" EndPoint="100%,100%">
+                <GradientStop Color="#FDFAFBFC" Offset="0.0" />
+                <GradientStop Color="#FDF5F6F9" Offset="0.5" />
+                <GradientStop Color="#FEF0F1F5" Offset="1.0" />
+            </LinearGradientBrush>
+
+            <!-- 3. Dual-Rim Hairline -->
+            <SolidColorBrush x:Key="WindowBorderBrush" Color="#CBCBD2" />
+            <LinearGradientBrush x:Key="WindowInnerRimBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+                <GradientStop Color="#E6FFFFFF" Offset="0.0" />
+                <GradientStop Color="#80FFFFFF" Offset="0.4" />
+                <GradientStop Color="#30FFFFFF" Offset="1.0" />
+            </LinearGradientBrush>
+
+            <!-- 4. 3-Tier Depth Hierarchy: Recessed (#E9EAF0) -> Base (#F5F6F9) -> Elevated Card (#FFFFFF) -->
+            <SolidColorBrush x:Key="SearchBackground" Color="#E9EAF0" />
+            <SolidColorBrush x:Key="SearchBorderBrush" Color="#D4D5DC" />
+            <SolidColorBrush x:Key="CardBackground" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="CardBorderBrush" Color="#E2E3E9" />
+            <SolidColorBrush x:Key="CardHoverBrush" Color="#F8F9FB" />
+            <SolidColorBrush x:Key="CardSelectedBrush" Color="#EAECEF" />
+            <SolidColorBrush x:Key="KeyHintBackground" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="KeyHintBorderBrush" Color="#D4D5DC" />
+            <SolidColorBrush x:Key="FooterBackground" Color="#EBECF1" />
+            <SolidColorBrush x:Key="FlyoutBackground" Color="#FFFFFF" />
+        </ResourceDictionary>
+    </ResourceDictionary.ThemeDictionaries>
+
+</ResourceDictionary>

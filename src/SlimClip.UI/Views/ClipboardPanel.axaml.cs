@@ -39,6 +39,7 @@ public partial class ClipboardPanel : Window
     public ClipboardPanel()
     {
         InitializeComponent();
+        WindowsPlatformChromeHelper.ConfigureWindowChrome(this);
         Avalonia.Media.TextOptions.SetTextRenderingMode(this, Avalonia.Media.TextRenderingMode.SubpixelAntialias);
 
         var tabBar = this.FindControl<SlimClip.UI.Controls.UnderlineTabBar>("FilterTabBar");

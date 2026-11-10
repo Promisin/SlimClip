@@ -224,6 +224,25 @@ public class IconButton : Button
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
+        ActualThemeVariantChanged += OnThemeVariantChanged;
+        ResourcesChanged += OnResourcesChanged;
+        UpdateVisualState();
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        ActualThemeVariantChanged -= OnThemeVariantChanged;
+        ResourcesChanged -= OnResourcesChanged;
+    }
+
+    private void OnThemeVariantChanged(object? sender, EventArgs e)
+    {
+        UpdateVisualState();
+    }
+
+    private void OnResourcesChanged(object? sender, ResourcesChangedEventArgs e)
+    {
         UpdateVisualState();
     }
 
@@ -306,6 +325,8 @@ public class IconButton : Button
 
     public IBrush GetEffectiveIconBrush(bool isHovered, bool isActive)
     {
+        var theme = ActualThemeVariant;
+
         if (isHovered && HoverForeground != null)
         {
             return HoverForeground;
@@ -319,7 +340,7 @@ public class IconButton : Button
             }
 
             // 激活态默认反色高亮（如白字/黑字），醒目而高级
-            if (this.TryFindResource("ActiveChipForeground", out var activeFgRes) && activeFgRes is IBrush afb)
+            if (this.TryFindResource("ActiveChipForeground", theme, out var activeFgRes) && activeFgRes is IBrush afb)
             {
                 return afb;
             }
@@ -336,12 +357,14 @@ public class IconButton : Button
             return Foreground;
         }
 
-        this.TryFindResource("TextSecondaryBrush", out var res);
+        this.TryFindResource("TextSecondaryBrush", theme, out var res);
         return res as IBrush ?? Brushes.Gray;
     }
 
     public IBrush GetEffectiveBackground(bool isHovered, bool isActive)
     {
+        var theme = ActualThemeVariant;
+
         if (isHovered)
         {
             if (HoverBackground != null)
@@ -356,13 +379,13 @@ public class IconButton : Button
                 {
                     return ActiveBackground;
                 }
-                if (this.TryFindResource("ActiveChipBackground", out var actHoverRes) && actHoverRes is IBrush ahb)
+                if (this.TryFindResource("ActiveChipBackground", theme, out var actHoverRes) && actHoverRes is IBrush ahb)
                 {
                     return ahb;
                 }
             }
 
-            this.TryFindResource("CardHoverBrush", out var hoverRes);
+            this.TryFindResource("CardHoverBrush", theme, out var hoverRes);
             return hoverRes as IBrush ?? new SolidColorBrush(Color.FromArgb(20, 128, 128, 128));
         }
 
@@ -374,7 +397,7 @@ public class IconButton : Button
             }
 
             // 激活态默认鲜明徽章胶囊背景（黑白为锚，显著可见）
-            if (this.TryFindResource("ActiveChipBackground", out var activeBgRes) && activeBgRes is IBrush abb)
+            if (this.TryFindResource("ActiveChipBackground", theme, out var activeBgRes) && activeBgRes is IBrush abb)
             {
                 return abb;
             }

@@ -4,6 +4,7 @@
     <!-- Fluent 2 Geometry & Metrics (Theme Independent) -->
     <CornerRadius x:Key="WindowCornerRadius">8</CornerRadius>
     <Thickness x:Key="WindowBorderThickness">1</Thickness>
+    <Thickness x:Key="WindowShadowMargin">0</Thickness>
 
     <CornerRadius x:Key="SearchBoxCornerRadius">17</CornerRadius>
     <x:Double x:Key="SearchBoxHeight">34</x:Double>
@@ -51,6 +52,8 @@
             <Color x:Key="AcrylicTintColor">#000000</Color>
             <x:Double x:Key="AcrylicTintOpacity">0.75</x:Double>
             <x:Double x:Key="AcrylicMaterialOpacity">0.45</x:Double>
+            <BoxShadows x:Key="WindowElevationShadow">0 0 0 #00000000</BoxShadows>
+            <SolidColorBrush x:Key="WindowInnerRimBrush" Color="Transparent" />
 
             <SolidColorBrush x:Key="InkBrush" Color="#FFFFFF" />
             <SolidColorBrush x:Key="PaperBrush" Color="#141416" />
@@ -87,6 +90,8 @@
             <Color x:Key="AcrylicTintColor">#000000</Color>
             <x:Double x:Key="AcrylicTintOpacity">0.75</x:Double>
             <x:Double x:Key="AcrylicMaterialOpacity">0.45</x:Double>
+            <BoxShadows x:Key="WindowElevationShadow">0 0 0 #00000000</BoxShadows>
+            <SolidColorBrush x:Key="WindowInnerRimBrush" Color="Transparent" />
 
             <SolidColorBrush x:Key="InkBrush" Color="#FFFFFF" />
             <SolidColorBrush x:Key="PaperBrush" Color="#141416" />
@@ -123,6 +128,8 @@
             <Color x:Key="AcrylicTintColor">#FFFFFF</Color>
             <x:Double x:Key="AcrylicTintOpacity">0.75</x:Double>
             <x:Double x:Key="AcrylicMaterialOpacity">0.45</x:Double>
+            <BoxShadows x:Key="WindowElevationShadow">0 0 0 #00000000</BoxShadows>
+            <SolidColorBrush x:Key="WindowInnerRimBrush" Color="Transparent" />
 
             <SolidColorBrush x:Key="InkBrush" Color="#0A0A0A" />
             <SolidColorBrush x:Key="PaperBrush" Color="#FFFFFF" />
@@ -136,19 +143,19 @@
             <SolidColorBrush x:Key="WindowBorderBrush" Color="#D4D4D8" />
             <SolidColorBrush x:Key="KeyHintBackground" Color="#FFFFFF" />
             <SolidColorBrush x:Key="KeyHintBorderBrush" Color="#D4D4D8" />
-            <SolidColorBrush x:Key="SurfaceBackground" Color="#A0D0D0D0" />
-            <SolidColorBrush x:Key="SearchBackground" Color="#B0E0E0E0" />
+            <SolidColorBrush x:Key="SurfaceBackground" Color="#D8F8F9FA" />
+            <SolidColorBrush x:Key="SearchBackground" Color="#DCFFFFFF" />
             <SolidColorBrush x:Key="SearchBorderBrush" Color="#D4D4D8" />
-            <SolidColorBrush x:Key="CardBackground" Color="#B0E0E0E0" />
+            <SolidColorBrush x:Key="CardBackground" Color="#DCFFFFFF" />
             <SolidColorBrush x:Key="CardBorderBrush" Color="#E5E5E5" />
-            <SolidColorBrush x:Key="CardHoverBrush" Color="#E8F4F4F5" />
+            <SolidColorBrush x:Key="CardHoverBrush" Color="#E8EBEBEF" />
             <SolidColorBrush x:Key="CardSelectedBrush" Color="#E4E4E7" />
             <SolidColorBrush x:Key="AccentBrush" Color="#0A0A0A" />
             <SolidColorBrush x:Key="DestructiveBrush" Color="#E7000B" />
             <SolidColorBrush x:Key="TextPrimaryBrush" Color="#0A0A0A" />
-            <SolidColorBrush x:Key="TextSecondaryBrush" Color="#383838" />
-            <SolidColorBrush x:Key="TextTertiaryBrush" Color="#595959" />
-            <SolidColorBrush x:Key="DividerBrush" Color="#E5E5E5" />
+            <SolidColorBrush x:Key="TextSecondaryBrush" Color="#262629" />
+            <SolidColorBrush x:Key="TextTertiaryBrush" Color="#4A4A50" />
+            <SolidColorBrush x:Key="DividerBrush" Color="#D4D4D8" />
             <SolidColorBrush x:Key="ItemBorderBrush" Color="Transparent" />
             <SolidColorBrush x:Key="FooterBackground" Color="#E6F5F5F5" />
             <SolidColorBrush x:Key="FlyoutBackground" Color="#FFFFFF" />

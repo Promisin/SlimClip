@@ -676,7 +676,10 @@
         </Style>
     </Window.Styles>
 
-    <Panel>
+    <Panel Margin="{DynamicResource WindowShadowMargin}">
+        <Border CornerRadius="{DynamicResource WindowCornerRadius}"
+                BoxShadow="{DynamicResource WindowElevationShadow}"
+                IsHitTestVisible="False" />
         <Border Background="{DynamicResource SurfaceBackground}"
                 CornerRadius="{DynamicResource WindowCornerRadius}"
                 BorderBrush="{DynamicResource WindowBorderBrush}"
@@ -812,6 +815,19 @@
                                     <RadioButton x:Name="ThemeSystemRadio" Content="{Binding L[Settings_Appearance_System]}" GroupName="ThemeModeGroup" IsCheckedChanged="OnThemeSystemChecked" FontSize="{DynamicResource BodyFontSize}" FontWeight="{DynamicResource NormalFontWeight}" />
                                     <RadioButton x:Name="ThemeLightRadio" Content="{Binding L[Settings_Appearance_Light]}" GroupName="ThemeModeGroup" IsCheckedChanged="OnThemeLightChecked" FontSize="{DynamicResource BodyFontSize}" FontWeight="{DynamicResource NormalFontWeight}" />
                                     <RadioButton x:Name="ThemeDarkRadio" Content="{Binding L[Settings_Appearance_Dark]}" GroupName="ThemeModeGroup" IsCheckedChanged="OnThemeDarkChecked" FontSize="{DynamicResource BodyFontSize}" FontWeight="{DynamicResource NormalFontWeight}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Background="{DynamicResource CardBackground}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource ItemCardCornerRadius}" Padding="16,14">
+                            <StackPanel Spacing="12">
+                                <StackPanel Spacing="2">
+                                    <TextBlock Text="{Binding L[Settings_Appearance_Backdrop]}" FontSize="{DynamicResource SectionTitleFontSize}" FontWeight="{DynamicResource BodyFontWeight}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    <TextBlock Text="{Binding L[Settings_Appearance_Backdrop_Desc]}" FontSize="{DynamicResource SubBodyFontSize}" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Spacing="20">
+                                    <RadioButton x:Name="BackdropTranslucentRadio" Content="{Binding L[Settings_Appearance_Translucent]}" GroupName="BackdropStyleGroup" IsCheckedChanged="OnBackdropTranslucentChecked" FontSize="{DynamicResource BodyFontSize}" FontWeight="{DynamicResource NormalFontWeight}" />
+                                    <RadioButton x:Name="BackdropSolidRadio" Content="{Binding L[Settings_Appearance_Solid]}" GroupName="BackdropStyleGroup" IsCheckedChanged="OnBackdropSolidChecked" FontSize="{DynamicResource BodyFontSize}" FontWeight="{DynamicResource NormalFontWeight}" />
                                 </StackPanel>
                             </StackPanel>
                         </Border>
@@ -1679,5 +1695,10 @@
                 </Panel>
             </Border>
         </Border>
+        <Border CornerRadius="{DynamicResource WindowCornerRadius}"
+                BorderBrush="{DynamicResource WindowInnerRimBrush}"
+                BorderThickness="1"
+                Margin="1"
+                IsHitTestVisible="False" />
     </Panel>
 </Window>
