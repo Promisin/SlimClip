@@ -142,7 +142,14 @@ public partial class SettingsWindow : Window
         if (panelGeneral != null) panelGeneral.IsVisible = tabValue == "General";
         if (panelAppearance != null) panelAppearance.IsVisible = tabValue == "Appearance";
         if (panelHotkey != null) panelHotkey.IsVisible = tabValue == "Hotkey";
-        if (panelData != null) panelData.IsVisible = tabValue == "Data";
+        if (panelData != null)
+        {
+            panelData.IsVisible = tabValue == "Data";
+            if (tabValue == "Data" && DataContext is SettingsViewModel vmData)
+            {
+                _ = vmData.RefreshStorageBreakdownAsync();
+            }
+        }
         if (panelAdvanced != null) panelAdvanced.IsVisible = tabValue == "Advanced";
         if (panelAbout != null) panelAbout.IsVisible = tabValue == "About";
 
@@ -180,6 +187,11 @@ public partial class SettingsWindow : Window
 
     private void OnClearAllDataClicked(object? sender, RoutedEventArgs e)
     {
+        if (DataContext is SettingsViewModel vm)
+        {
+            _ = vm.RefreshStorageBreakdownAsync();
+        }
+
         var overlay = this.FindControl<Border>("ClearDataOverlay");
         var confirmPanel = this.FindControl<StackPanel>("ClearConfirmPanel");
         var progressPanel = this.FindControl<StackPanel>("ClearProgressPanel");
@@ -221,13 +233,13 @@ public partial class SettingsWindow : Window
 
         try
         {
-            // Execute clear task and ensure at least 1000ms delay so user can clearly perceive the action
+            // Execute targeted clean task and ensure at least 800ms delay for smooth visual feedback
             Task cleanTask = Task.CompletedTask;
             if (DataContext is SettingsViewModel vm)
             {
-                cleanTask = vm.ClearAllDataAsync();
+                cleanTask = vm.ExecuteTargetedCleanAsync();
             }
-            var minDelayTask = Task.Delay(1000);
+            var minDelayTask = Task.Delay(800);
 
             await Task.WhenAll(cleanTask, minDelayTask);
         }

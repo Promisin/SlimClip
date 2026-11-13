@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using SlimClip.Core.Models;
 using SlimClip.Core.Services;
@@ -26,6 +27,8 @@ public class AboutPanelTests
         public Task<bool> UpdateItemContentAsync(string id, string text, string? htmlContent, string? rtfContent, DateTime updatedAt) => Task.FromResult(true);
         public Task<List<ClipboardItem>> GetPagedItemsAsync(int limit, int offset, ClipboardType? type = null, bool favoriteOnly = false, string? searchText = null, CancellationToken cancellationToken = default) => Task.FromResult(new List<ClipboardItem>());
         public Task<(string? HtmlContent, string? RtfContent)> GetItemContentAsync(string id, CancellationToken cancellationToken = default) => Task.FromResult<(string?, string?)>((null, null));
+        public Task<StorageBreakdown> GetStorageBreakdownAsync(CancellationToken cancellationToken = default) => Task.FromResult(new StorageBreakdown());
+        public Task<int> CleanTargetedAsync(TargetedCleanFilter filter, CancellationToken cancellationToken = default) => Task.FromResult(0);
         public void Dispose() { }
     }
 
@@ -70,7 +73,6 @@ public class AboutPanelTests
         var loc = new LocalizationService("zh-CN");
         var vm = new SettingsViewModel(settingsService, new DummyHistory(), localizationService: loc);
 
-
         string? copiedText = null;
         vm.CopyToClipboardRequested += text => copiedText = text;
 
@@ -84,7 +86,6 @@ public class AboutPanelTests
         await copyTask;
         Assert.Equal(loc["Settings_About_CopyInfo"], vm.CopyVersionButtonText);
     }
-
 
     [Fact]
     public void SettingsViewModel_Links_MatchCanonicalUrls()
@@ -126,5 +127,39 @@ public class AboutPanelTests
                 Directory.Delete(tempDir, true);
             }
         }
+    }
+
+    [Fact]
+    public void SettingsViewModel_HasReleaseNotes_ReflectsAvailableUpdateContent()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), "SlimClip_About_Test_" + Guid.NewGuid().ToString("N"));
+        var settingsService = new SettingsService(customDataDir: tempDir);
+        var vm = new SettingsViewModel(settingsService, new DummyHistory());
+
+        Assert.False(vm.HasReleaseNotes);
+
+        vm.AvailableUpdate = new UpdateInfo
+        {
+            Version = "1.0.7",
+            TagName = "v1.0.7",
+            ReleaseNotes = "   ",
+            AssetName = "SlimClip.exe",
+            DownloadUrl = "https://example.com",
+            AssetSize = 100,
+            HtmlUrl = "https://example.com"
+        };
+        Assert.False(vm.HasReleaseNotes);
+
+        vm.AvailableUpdate = new UpdateInfo
+        {
+            Version = "1.0.7",
+            TagName = "v1.0.7",
+            ReleaseNotes = "### 新增\n- 功能",
+            AssetName = "SlimClip.exe",
+            DownloadUrl = "https://example.com",
+            AssetSize = 100,
+            HtmlUrl = "https://example.com"
+        };
+        Assert.True(vm.HasReleaseNotes);
     }
 }

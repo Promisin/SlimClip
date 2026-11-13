@@ -18,17 +18,17 @@ public class WindowsPasteService : IPasteService
 
     public IntPtr TargetWindowHandle { get; set; }
 
-    public async Task PasteAsync(ClipboardItem item, int delayMs)
+    public async Task PasteAsync(ClipboardItem item, int delayMs, bool plainTextOnly = false)
     {
-        await SetClipboardDataAsync(item);
+        await SetClipboardDataAsync(item, plainTextOnly);
 
         if (TargetWindowHandle != IntPtr.Zero && NativeMethods.IsWindow(TargetWindowHandle))
         {
             WindowsWindowActivationService.ForceSetForegroundWindow(TargetWindowHandle);
         }
 
-        // 资源管理器等文件宿主前台与视图焦点恢复通常需要稍充裕的调度时间
-        int effectiveDelay = (item.IsFile || item.IsImage) ? Math.Max(delayMs, 100) : delayMs;
+        // 纯文本粘贴无需等待文件或图片的物理资源管理器调度缓冲
+        int effectiveDelay = (!plainTextOnly && (item.IsFile || item.IsImage)) ? Math.Max(delayMs, 100) : delayMs;
         if (effectiveDelay > 0)
         {
             await Task.Delay(effectiveDelay);
@@ -37,7 +37,7 @@ public class WindowsPasteService : IPasteService
         SimulateCtrlV();
     }
 
-    public Task SetClipboardDataAsync(ClipboardItem item)
+    public Task SetClipboardDataAsync(ClipboardItem item, bool plainTextOnly = false)
     {
         for (int retry = 0; retry < 5; retry++)
         {
@@ -47,44 +47,65 @@ public class WindowsPasteService : IPasteService
                 {
                     NativeMethods.EmptyClipboard();
 
-                    if (item.IsImage && !string.IsNullOrEmpty(item.ImagePath))
+                    if (plainTextOnly)
                     {
-                        var dataDir = SettingsService.ResolveDataDirectory();
-                        var fullPath = Path.IsPathRooted(item.ImagePath) ? item.ImagePath : Path.Combine(dataDir, item.ImagePath);
-                        if (File.Exists(fullPath))
+                        if (item.IsImage && !string.IsNullOrEmpty(item.ImagePath))
                         {
-                            var bytes = File.ReadAllBytes(fullPath);
-                            SetImageData(bytes);
-
-                            // 导出标准 PNG 文件并写入 CF_HDROP，支持在文件资源管理器中直接粘贴为文件
-                            var exportPath = PrepareExportImageFile(dataDir, item, bytes);
-                            if (!string.IsNullOrEmpty(exportPath) && File.Exists(exportPath))
-                            {
-                                SetDropFiles(new[] { exportPath }, setUnicodeText: false);
-                            }
+                            var dataDir = SettingsService.ResolveDataDirectory();
+                            var fullPath = Path.IsPathRooted(item.ImagePath) ? item.ImagePath : Path.Combine(dataDir, item.ImagePath);
+                            SetUnicodeText(fullPath);
                         }
-                    }
-                    else if (item.IsFile)
-                    {
-                        var paths = item.ParsedFilePaths;
-                        if (paths.Length > 0)
+                        else if (item.IsFile)
                         {
-                            SetDropFiles(paths);
+                            var paths = item.ParsedFilePaths;
+                            SetUnicodeText(string.Join(Environment.NewLine, paths));
+                        }
+                        else
+                        {
+                            SetUnicodeText(item.Text ?? string.Empty);
                         }
                     }
                     else
                     {
-                        var text = item.Text ?? string.Empty;
-                        SetUnicodeText(text);
-
-                        if (!string.IsNullOrEmpty(item.HtmlContent) && _htmlFormat != 0)
+                        if (item.IsImage && !string.IsNullOrEmpty(item.ImagePath))
                         {
-                            SetGlobalBytes(_htmlFormat, Encoding.UTF8.GetBytes(item.HtmlContent + '\0'));
+                            var dataDir = SettingsService.ResolveDataDirectory();
+                            var fullPath = Path.IsPathRooted(item.ImagePath) ? item.ImagePath : Path.Combine(dataDir, item.ImagePath);
+                            if (File.Exists(fullPath))
+                            {
+                                var bytes = File.ReadAllBytes(fullPath);
+                                SetImageData(bytes);
+
+                                // 导出标准 PNG 文件并写入 CF_HDROP，支持在文件资源管理器中直接粘贴为文件
+                                var exportPath = PrepareExportImageFile(dataDir, item, bytes);
+                                if (!string.IsNullOrEmpty(exportPath) && File.Exists(exportPath))
+                                {
+                                    SetDropFiles(new[] { exportPath }, setUnicodeText: false);
+                                }
+                            }
                         }
-
-                        if (!string.IsNullOrEmpty(item.RtfContent) && _rtfFormat != 0)
+                        else if (item.IsFile)
                         {
-                            SetGlobalBytes(_rtfFormat, Encoding.Default.GetBytes(item.RtfContent + '\0'));
+                            var paths = item.ParsedFilePaths;
+                            if (paths.Length > 0)
+                            {
+                                SetDropFiles(paths);
+                            }
+                        }
+                        else
+                        {
+                            var text = item.Text ?? string.Empty;
+                            SetUnicodeText(text);
+
+                            if (!string.IsNullOrEmpty(item.HtmlContent) && _htmlFormat != 0)
+                            {
+                                SetGlobalBytes(_htmlFormat, Encoding.UTF8.GetBytes(item.HtmlContent + '\0'));
+                            }
+
+                            if (!string.IsNullOrEmpty(item.RtfContent) && _rtfFormat != 0)
+                            {
+                                SetGlobalBytes(_rtfFormat, Encoding.Default.GetBytes(item.RtfContent + '\0'));
+                            }
                         }
                     }
 

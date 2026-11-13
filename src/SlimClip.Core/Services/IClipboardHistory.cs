@@ -19,4 +19,6 @@ public interface IClipboardHistory : IDisposable
     Task<bool> UpdateItemContentAsync(string id, string text, string? htmlContent, string? rtfContent, DateTime updatedAt);
     Task<List<ClipboardItem>> GetPagedItemsAsync(int limit, int offset, ClipboardType? type = null, bool favoriteOnly = false, string? searchText = null, System.Threading.CancellationToken cancellationToken = default);
     Task<(string? HtmlContent, string? RtfContent)> GetItemContentAsync(string id, System.Threading.CancellationToken cancellationToken = default);
+    Task<StorageBreakdown> GetStorageBreakdownAsync(System.Threading.CancellationToken cancellationToken = default);
+    Task<int> CleanTargetedAsync(TargetedCleanFilter filter, System.Threading.CancellationToken cancellationToken = default);
 }

@@ -11,9 +11,9 @@ public class MacPasteService : IPasteService
 {
     public IntPtr TargetApplication { get; set; }
 
-    public async Task PasteAsync(ClipboardItem item, int delayMs)
+    public async Task PasteAsync(ClipboardItem item, int delayMs, bool plainTextOnly = false)
     {
-        await SetClipboardDataAsync(item);
+        await SetClipboardDataAsync(item, plainTextOnly);
 
         if (TargetApplication != IntPtr.Zero)
         {
@@ -21,8 +21,8 @@ public class MacPasteService : IPasteService
             TargetApplication = IntPtr.Zero;
         }
 
-        // 访达或终端等宿主在窗口切换交接时通常需要稍充裕的调度时间
-        int effectiveDelay = (item.IsFile || item.IsImage) ? Math.Max(delayMs, 100) : delayMs;
+        // 纯文本粘贴无需等待文件或图片的访达交接调度缓冲
+        int effectiveDelay = (!plainTextOnly && (item.IsFile || item.IsImage)) ? Math.Max(delayMs, 100) : delayMs;
         if (effectiveDelay > 0)
         {
             await Task.Delay(effectiveDelay);
@@ -31,7 +31,7 @@ public class MacPasteService : IPasteService
         SimulateCmdV();
     }
 
-    public Task SetClipboardDataAsync(ClipboardItem item)
+    public Task SetClipboardDataAsync(ClipboardItem item, bool plainTextOnly = false)
     {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             return Task.CompletedTask;
@@ -46,62 +46,87 @@ public class MacPasteService : IPasteService
             var clearSel = MacNativeMethods.sel_registerName("clearContents");
             MacNativeMethods.objc_msgSend(pboard, clearSel);
 
-            if (item.IsText)
+            var setStrSel = MacNativeMethods.sel_registerName("setString:forType:");
+            var strType = MacNativeMethods.CreateNSString("public.utf8-plain-text");
+
+            if (plainTextOnly)
             {
-                var strType = MacNativeMethods.CreateNSString("public.utf8-plain-text");
-                var nsText = MacNativeMethods.CreateNSString(item.Text ?? string.Empty);
-                var setStrSel = MacNativeMethods.sel_registerName("setString:forType:");
-                MacNativeMethods.objc_msgSend_bool(pboard, setStrSel, nsText, strType);
-
-                if (!string.IsNullOrEmpty(item.HtmlContent))
+                if (item.IsImage && !string.IsNullOrEmpty(item.ImagePath))
                 {
-                    var htmlType = MacNativeMethods.CreateNSString("public.html");
-                    var nsHtml = MacNativeMethods.CreateNSString(item.HtmlContent);
-                    MacNativeMethods.objc_msgSend_bool(pboard, setStrSel, nsHtml, htmlType);
+                    var dataDir = SettingsService.ResolveDataDirectory();
+                    var fullPath = Path.IsPathRooted(item.ImagePath) ? item.ImagePath : Path.Combine(dataDir, item.ImagePath);
+                    var nsText = MacNativeMethods.CreateNSString(fullPath);
+                    MacNativeMethods.objc_msgSend_bool(pboard, setStrSel, nsText, strType);
                 }
-
-                if (!string.IsNullOrEmpty(item.RtfContent))
+                else if (item.IsFile)
                 {
-                    var rtfType = MacNativeMethods.CreateNSString("public.rtf");
-                    var nsRtf = MacNativeMethods.CreateNSString(item.RtfContent);
-                    MacNativeMethods.objc_msgSend_bool(pboard, setStrSel, nsRtf, rtfType);
+                    var pathsText = string.Join("\n", item.ParsedFilePaths);
+                    var nsText = MacNativeMethods.CreateNSString(pathsText);
+                    MacNativeMethods.objc_msgSend_bool(pboard, setStrSel, nsText, strType);
+                }
+                else
+                {
+                    var nsText = MacNativeMethods.CreateNSString(item.Text ?? string.Empty);
+                    MacNativeMethods.objc_msgSend_bool(pboard, setStrSel, nsText, strType);
                 }
             }
-            else if (item.IsImage && !string.IsNullOrEmpty(item.ImagePath))
+            else
             {
-                var dataDir = SettingsService.ResolveDataDirectory();
-                var fullPath = Path.IsPathRooted(item.ImagePath) ? item.ImagePath : Path.Combine(dataDir, item.ImagePath);
-                if (File.Exists(fullPath))
+                if (item.IsText)
                 {
-                    var bytes = File.ReadAllBytes(fullPath);
-                    var dataCls = MacNativeMethods.objc_getClass("NSData");
-                    var dataWithBytesSel = MacNativeMethods.sel_registerName("dataWithBytes:length:");
+                    var nsText = MacNativeMethods.CreateNSString(item.Text ?? string.Empty);
+                    MacNativeMethods.objc_msgSend_bool(pboard, setStrSel, nsText, strType);
 
-                    var ptr = Marshal.AllocHGlobal(bytes.Length);
-                    try
+                    if (!string.IsNullOrEmpty(item.HtmlContent))
                     {
-                        Marshal.Copy(bytes, 0, ptr, bytes.Length);
-                        var nsData = MacNativeMethods.objc_msgSend(dataCls, dataWithBytesSel, ptr, (IntPtr)bytes.Length);
-                        var pngType = MacNativeMethods.CreateNSString("public.png");
-                        var setDataSel = MacNativeMethods.sel_registerName("setData:forType:");
-                        MacNativeMethods.objc_msgSend_bool(pboard, setDataSel, nsData, pngType);
+                        var htmlType = MacNativeMethods.CreateNSString("public.html");
+                        var nsHtml = MacNativeMethods.CreateNSString(item.HtmlContent);
+                        MacNativeMethods.objc_msgSend_bool(pboard, setStrSel, nsHtml, htmlType);
+                    }
 
-                        // 导出标准 PNG 文件并写入 NSFilenamesPboardType 与 public.file-url，支持在访达中直接粘贴为文件
-                        var exportPath = PrepareExportImageFile(dataDir, item, bytes);
-                        if (!string.IsNullOrEmpty(exportPath) && File.Exists(exportPath))
+                    if (!string.IsNullOrEmpty(item.RtfContent))
+                    {
+                        var rtfType = MacNativeMethods.CreateNSString("public.rtf");
+                        var nsRtf = MacNativeMethods.CreateNSString(item.RtfContent);
+                        MacNativeMethods.objc_msgSend_bool(pboard, setStrSel, nsRtf, rtfType);
+                    }
+                }
+                else if (item.IsImage && !string.IsNullOrEmpty(item.ImagePath))
+                {
+                    var dataDir = SettingsService.ResolveDataDirectory();
+                    var fullPath = Path.IsPathRooted(item.ImagePath) ? item.ImagePath : Path.Combine(dataDir, item.ImagePath);
+                    if (File.Exists(fullPath))
+                    {
+                        var bytes = File.ReadAllBytes(fullPath);
+                        var dataCls = MacNativeMethods.objc_getClass("NSData");
+                        var dataWithBytesSel = MacNativeMethods.sel_registerName("dataWithBytes:length:");
+
+                        var ptr = Marshal.AllocHGlobal(bytes.Length);
+                        try
                         {
-                            WriteFileDropToPasteboard(pboard, new[] { exportPath }, setPlainText: false);
+                            Marshal.Copy(bytes, 0, ptr, bytes.Length);
+                            var nsData = MacNativeMethods.objc_msgSend(dataCls, dataWithBytesSel, ptr, (IntPtr)bytes.Length);
+                            var pngType = MacNativeMethods.CreateNSString("public.png");
+                            var setDataSel = MacNativeMethods.sel_registerName("setData:forType:");
+                            MacNativeMethods.objc_msgSend_bool(pboard, setDataSel, nsData, pngType);
+
+                            // 导出标准 PNG 文件并写入 NSFilenamesPboardType 与 public.file-url，支持在访达中直接粘贴为文件
+                            var exportPath = PrepareExportImageFile(dataDir, item, bytes);
+                            if (!string.IsNullOrEmpty(exportPath) && File.Exists(exportPath))
+                            {
+                                WriteFileDropToPasteboard(pboard, new[] { exportPath }, setPlainText: false);
+                            }
+                        }
+                        finally
+                        {
+                            Marshal.FreeHGlobal(ptr);
                         }
                     }
-                    finally
-                    {
-                        Marshal.FreeHGlobal(ptr);
-                    }
                 }
-            }
-            else if (item.IsFile && item.ParsedFilePaths.Length > 0)
-            {
-                WriteFileDropToPasteboard(pboard, item.ParsedFilePaths, setPlainText: true);
+                else if (item.IsFile && item.ParsedFilePaths.Length > 0)
+                {
+                    WriteFileDropToPasteboard(pboard, item.ParsedFilePaths, setPlainText: true);
+                }
             }
         }
         catch { }

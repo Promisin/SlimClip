@@ -28,20 +28,68 @@
             <Setter Property="FontWeight" Value="{DynamicResource NormalFontWeight}" />
         </Style>
 
-        <!-- Monochrome Blueprint CheckBox -->
+        <!-- Monochrome Blueprint CheckBox (100% Monochrome & Optical Vertical Centering) -->
         <Style Selector="CheckBox">
             <Setter Property="FocusAdorner" Value="{x:Null}" />
             <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
             <Setter Property="FontSize" Value="{DynamicResource SubBodyFontSize}" />
             <Setter Property="FontWeight" Value="{DynamicResource NormalFontWeight}" />
             <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="MinHeight" Value="24" />
+            <Setter Property="Padding" Value="8,1,0,0" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="CheckBox /template/ Border#NormalRectangle">
+            <Setter Property="Width" Value="18" />
+            <Setter Property="Height" Value="18" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="BorderBrush" Value="{DynamicResource HairlineBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SearchBackground}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="CheckBox:pointerover /template/ Border#NormalRectangle">
+            <Setter Property="BorderBrush" Value="{DynamicResource TextSecondaryBrush}" />
+            <Setter Property="Background" Value="{DynamicResource CardHoverBrush}" />
+        </Style>
+        <Style Selector="CheckBox:pointerover">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+        </Style>
+        <Style Selector="CheckBox:pressed /template/ Border#NormalRectangle">
+            <Setter Property="BorderBrush" Value="{DynamicResource TextSecondaryBrush}" />
+            <Setter Property="Background" Value="{DynamicResource CardHoverBrush}" />
+            <Setter Property="Opacity" Value="0.8" />
         </Style>
         <Style Selector="CheckBox:checked /template/ Border#NormalRectangle">
             <Setter Property="Background" Value="{DynamicResource ActiveChipBackground}" />
             <Setter Property="BorderBrush" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="BorderThickness" Value="1" />
         </Style>
         <Style Selector="CheckBox:checked /template/ Path#CheckGlyph">
             <Setter Property="Fill" Value="{DynamicResource ActiveChipForeground}" />
+            <Setter Property="Width" Value="9" />
+            <Setter Property="Height" Value="7" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="CheckBox:checked:pointerover /template/ Border#NormalRectangle">
+            <Setter Property="Background" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="Opacity" Value="0.9" />
+        </Style>
+        <Style Selector="CheckBox:checked:pointerover /template/ Path#CheckGlyph">
+            <Setter Property="Fill" Value="{DynamicResource ActiveChipForeground}" />
+        </Style>
+        <Style Selector="CheckBox:checked:pressed /template/ Border#NormalRectangle">
+            <Setter Property="Background" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="Opacity" Value="0.8" />
+        </Style>
+        <Style Selector="CheckBox:checked:pressed /template/ Path#CheckGlyph">
+            <Setter Property="Fill" Value="{DynamicResource ActiveChipForeground}" />
+        </Style>
+        <Style Selector="CheckBox:pressed">
+            <Setter Property="Opacity" Value="0.8" />
         </Style>
 
         <!-- Primary Action Button (Black & White as Anchor) -->

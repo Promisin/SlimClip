@@ -195,6 +195,70 @@
             <Setter Property="Opacity" Value="0.8" />
         </Style>
 
+        <!-- CheckBox (100% Monochrome Blueprint & Optical Vertical Centering) -->
+        <Style Selector="CheckBox">
+            <Setter Property="FocusAdorner" Value="{x:Null}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="FontSize" Value="{DynamicResource SubBodyFontSize}" />
+            <Setter Property="FontWeight" Value="{DynamicResource NormalFontWeight}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="MinHeight" Value="24" />
+            <Setter Property="Padding" Value="8,1,0,0" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="CheckBox /template/ Border#NormalRectangle">
+            <Setter Property="Width" Value="18" />
+            <Setter Property="Height" Value="18" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="BorderBrush" Value="{DynamicResource HairlineBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SearchBackground}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="CheckBox:pointerover /template/ Border#NormalRectangle">
+            <Setter Property="BorderBrush" Value="{DynamicResource TextSecondaryBrush}" />
+            <Setter Property="Background" Value="{DynamicResource CardHoverBrush}" />
+        </Style>
+        <Style Selector="CheckBox:pointerover">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+        </Style>
+        <Style Selector="CheckBox:pressed /template/ Border#NormalRectangle">
+            <Setter Property="BorderBrush" Value="{DynamicResource TextSecondaryBrush}" />
+            <Setter Property="Background" Value="{DynamicResource CardHoverBrush}" />
+            <Setter Property="Opacity" Value="0.8" />
+        </Style>
+        <Style Selector="CheckBox:checked /template/ Border#NormalRectangle">
+            <Setter Property="Background" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="CheckBox:checked /template/ Path#CheckGlyph">
+            <Setter Property="Fill" Value="{DynamicResource ActiveChipForeground}" />
+            <Setter Property="Width" Value="9" />
+            <Setter Property="Height" Value="7" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="CheckBox:checked:pointerover /template/ Border#NormalRectangle">
+            <Setter Property="Background" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="Opacity" Value="0.9" />
+        </Style>
+        <Style Selector="CheckBox:checked:pointerover /template/ Path#CheckGlyph">
+            <Setter Property="Fill" Value="{DynamicResource ActiveChipForeground}" />
+        </Style>
+        <Style Selector="CheckBox:checked:pressed /template/ Border#NormalRectangle">
+            <Setter Property="Background" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ActiveChipBackground}" />
+            <Setter Property="Opacity" Value="0.8" />
+        </Style>
+        <Style Selector="CheckBox:checked:pressed /template/ Path#CheckGlyph">
+            <Setter Property="Fill" Value="{DynamicResource ActiveChipForeground}" />
+        </Style>
+        <Style Selector="CheckBox:pressed">
+            <Setter Property="Opacity" Value="0.8" />
+        </Style>
+
         <Style Selector="ToggleSwitch:checked /template/ Border#SwitchKnobBounds">
             <Setter Property="Background" Value="{DynamicResource ActiveChipBackground}" />
             <Setter Property="BorderBrush" Value="{DynamicResource ActiveChipBackground}" />
@@ -901,7 +965,7 @@
                                 Padding="16,14">
                             <StackPanel Spacing="12">
                                 <Grid ColumnDefinitions="*,Auto">
-                                    <StackPanel Grid.Column="0" Spacing="2">
+                                    <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,16,0" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding L[Settings_Hotkey_Override_Title]}"
                                                    FontSize="{DynamicResource SectionTitleFontSize}"
                                                    FontWeight="{DynamicResource BodyFontWeight}"
@@ -915,33 +979,42 @@
                                                   Grid.Column="1"
                                                   IsChecked="{Binding AllowDisableSystemHotkeys, Mode=TwoWay}"
                                                   OnContent="" OffContent=""
-                                                  VerticalAlignment="Top" />
+                                                  VerticalAlignment="Center" />
                                 </Grid>
 
-                                <Rectangle Height="1" Fill="{DynamicResource DividerBrush}" />
-
-                                <StackPanel Spacing="6">
-                                    <TextBlock Text="{Binding L[Settings_Hotkey_Override_TheoryTitle]}"
-                                               FontSize="{DynamicResource CaptionFontSize}"
-                                               FontWeight="{DynamicResource TitleFontWeight}"
-                                               Foreground="{DynamicResource TextSecondaryBrush}" />
-                                    <TextBlock Text="{Binding L[Settings_Hotkey_Override_Theory1]}"
-                                               FontSize="{DynamicResource CaptionFontSize}"
-                                               Foreground="{DynamicResource TextTertiaryBrush}"
-                                               TextWrapping="Wrap" />
-                                    <TextBlock Text="{Binding L[Settings_Hotkey_Override_Theory2]}"
-                                               FontSize="{DynamicResource CaptionFontSize}"
-                                               Foreground="{DynamicResource TextTertiaryBrush}"
-                                               TextWrapping="Wrap" />
-                                    <TextBlock Text="{Binding L[Settings_Hotkey_Override_Theory3]}"
-                                               FontSize="{DynamicResource CaptionFontSize}"
-                                               Foreground="{DynamicResource TextTertiaryBrush}"
-                                               TextWrapping="Wrap" />
-                                    <TextBlock Text="{Binding L[Settings_Hotkey_Override_Theory4]}"
-                                               FontSize="{DynamicResource CaptionFontSize}"
-                                               Foreground="{DynamicResource TextTertiaryBrush}"
-                                               TextWrapping="Wrap" />
-                                </StackPanel>
+                                <!-- 注意事项提示面板 (清晰简练的微凹槽容器) -->
+                                <Border Background="{DynamicResource SearchBackground}"
+                                        BorderBrush="{DynamicResource SearchBorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Padding="12,10">
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="{Binding L[Settings_Hotkey_Override_TheoryTitle]}"
+                                                   FontSize="{DynamicResource CaptionFontSize}"
+                                                   FontWeight="{DynamicResource TitleFontWeight}"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}" />
+                                        <TextBlock Text="{Binding L[Settings_Hotkey_Override_Theory1]}"
+                                                   FontSize="{DynamicResource CaptionFontSize}"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                                   LineHeight="18"
+                                                   TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding L[Settings_Hotkey_Override_Theory2]}"
+                                                   FontSize="{DynamicResource CaptionFontSize}"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                                   LineHeight="18"
+                                                   TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding L[Settings_Hotkey_Override_Theory3]}"
+                                                   FontSize="{DynamicResource CaptionFontSize}"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                                   LineHeight="18"
+                                                   TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding L[Settings_Hotkey_Override_Theory4]}"
+                                                   FontSize="{DynamicResource CaptionFontSize}"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                                   LineHeight="18"
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
                         </Border>
 
@@ -1186,7 +1259,7 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- 3. Clear All -->
+                        <!-- 3. Storage & Targeted Clean Card -->
                         <Border Background="{DynamicResource CardBackground}"
                                 BorderBrush="{DynamicResource CardBorderBrush}"
                                 BorderThickness="1"
@@ -1194,16 +1267,27 @@
                                 Padding="16,14">
                             <Grid ColumnDefinitions="*,Auto">
                                 <StackPanel Grid.Column="0" Spacing="2">
-                                    <TextBlock Text="{Binding L[Settings_Data_ClearAll]}" FontSize="{DynamicResource SectionTitleFontSize}" FontWeight="{DynamicResource BodyFontWeight}" Foreground="{DynamicResource TextPrimaryBrush}" />
-                                    <TextBlock Text="{Binding L[Settings_Data_ClearAll_Desc]}" FontSize="{DynamicResource SubBodyFontSize}" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    <TextBlock Text="{Binding L[Settings_Data_Storage]}" FontSize="{DynamicResource SectionTitleFontSize}" FontWeight="{DynamicResource BodyFontWeight}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    <TextBlock Text="{Binding L[Settings_Data_Storage_Desc]}" FontSize="{DynamicResource SubBodyFontSize}" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    <StackPanel Spacing="3" Margin="0,8,12,0">
+                                        <TextBlock Text="{Binding StorageSummaryText}"
+                                                   FontSize="{DynamicResource BodyFontSize}"
+                                                   FontWeight="{DynamicResource BodyFontWeight}"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}" />
+                                        <TextBlock Text="{Binding StorageBreakdownText}"
+                                                   FontSize="{DynamicResource CaptionFontSize}"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
                                 </StackPanel>
                                 <Button x:Name="ClearAllDataButton"
                                         Grid.Column="1"
-                                        Content="{Binding L[Settings_Data_ClearAll_Btn]}"
+                                        VerticalAlignment="Center"
+                                        Content="{Binding L[Settings_Data_CleanDataBtn]}"
                                         Click="OnClearAllDataClicked"
                                         Background="{DynamicResource DestructiveBrush}"
                                         Foreground="White"
-                                        Padding="14,6"
+                                        Padding="14,7"
                                         CornerRadius="6"
                                         FontWeight="{DynamicResource BodyFontWeight}"
                                         Cursor="Hand" />
@@ -1375,12 +1459,6 @@
                                                            Foreground="{DynamicResource ActiveChipForeground}" />
                                             </Border>
                                         </StackPanel>
-                                        <TextBlock Text="{Binding AvailableUpdate.ReleaseNotes}"
-                                                   FontSize="{DynamicResource SubBodyFontSize}"
-                                                   Foreground="{DynamicResource TextSecondaryBrush}"
-                                                   TextWrapping="Wrap"
-                                                   MaxLines="3"
-                                                   TextTrimming="CharacterEllipsis" />
                                         <TextBlock Text="{Binding L[Settings_About_Update_DownloadFailed]}"
                                                    IsVisible="{Binding IsDownloadFailed}"
                                                    FontSize="{DynamicResource CaptionFontSize}"
@@ -1428,6 +1506,20 @@
                                                 Cursor="Hand" />
                                     </StackPanel>
                                 </Grid>
+
+                                <!-- 更新内容展示区域 (规整纯文本，整洁中文章节与列表排版，无省略号截断) -->
+                                <Border Background="{DynamicResource SearchBackground}"
+                                        BorderBrush="{DynamicResource SearchBorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Padding="12,10"
+                                        IsVisible="{Binding HasReleaseNotes}">
+                                    <TextBlock Text="{Binding AvailableUpdate.FormattedReleaseNotes}"
+                                               FontSize="{DynamicResource SubBodyFontSize}"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"
+                                               LineHeight="20"
+                                               TextWrapping="Wrap" />
+                                </Border>
 
                                 <!-- 下载进度条 -->
                                 <StackPanel Spacing="6" IsVisible="{Binding IsDownloadingUpdate}">
@@ -1598,7 +1690,7 @@
         </Grid>
     </Border>
 
-        <!-- Clear Data Overlay: Confirmation, Spinner Progress, and Success Checkmark -->
+        <!-- Clear Data Overlay: Targeted Clean Dialog, Spinner Progress, and Success Checkmark -->
         <Border x:Name="ClearDataOverlay"
                 IsVisible="False"
                 Background="#D8000000"
@@ -1610,25 +1702,93 @@
                     BorderThickness="1"
                     CornerRadius="12"
                     Padding="24,20"
-                    Width="340"
+                    Width="380"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
                     BoxShadow="0 16 48 #80000000">
                 <Panel>
-                    <!-- 1. Confirmation Card -->
-                    <StackPanel x:Name="ClearConfirmPanel" Spacing="16" IsVisible="True">
-                        <StackPanel Spacing="6">
-                            <TextBlock Text="{Binding L[Settings_Data_Clear_Title]}"
+                    <!-- 1. Targeted Clean Configuration Card -->
+                    <StackPanel x:Name="ClearConfirmPanel" Spacing="14" IsVisible="True">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="{Binding L[Settings_Data_CleanDialog_Title]}"
                                        FontSize="{DynamicResource SectionTitleFontSize}"
                                        FontWeight="{DynamicResource TitleFontWeight}"
                                        Foreground="{DynamicResource TextPrimaryBrush}" />
-                            <TextBlock Text="{Binding L[Settings_Data_Clear_Message]}"
+                            <TextBlock Text="{Binding L[Settings_Data_CleanDialog_Subtitle]}"
                                        FontSize="{DynamicResource SubBodyFontSize}"
                                        Foreground="{DynamicResource TextSecondaryBrush}"
                                        TextWrapping="Wrap"
                                        LineHeight="18" />
                         </StackPanel>
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+
+                        <!-- Clean Types Group -->
+                        <Border Background="{DynamicResource SearchBackground}"
+                                BorderBrush="{DynamicResource HairlineBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="12,10">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="{Binding L[Settings_Data_CleanDialog_TypeGroup]}"
+                                           FontSize="{DynamicResource CaptionFontSize}"
+                                           FontWeight="{DynamicResource BodyFontWeight}"
+                                           Foreground="{DynamicResource TextSecondaryBrush}" />
+                                <CheckBox Content="{Binding CleanTextLabel}"
+                                          IsChecked="{Binding CleanTextSelected, Mode=TwoWay}"
+                                          FontSize="{DynamicResource SubBodyFontSize}" />
+                                <CheckBox Content="{Binding CleanImagesLabel}"
+                                          IsChecked="{Binding CleanImagesSelected, Mode=TwoWay}"
+                                          FontSize="{DynamicResource SubBodyFontSize}" />
+                                <CheckBox Content="{Binding CleanFilesLabel}"
+                                          IsChecked="{Binding CleanFilesSelected, Mode=TwoWay}"
+                                          FontSize="{DynamicResource SubBodyFontSize}" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Time Range Group -->
+                        <Border Background="{DynamicResource SearchBackground}"
+                                BorderBrush="{DynamicResource HairlineBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="12,10">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="{Binding L[Settings_Data_CleanDialog_TimeGroup]}"
+                                           FontSize="{DynamicResource CaptionFontSize}"
+                                           FontWeight="{DynamicResource BodyFontWeight}"
+                                           Foreground="{DynamicResource TextSecondaryBrush}" />
+                                <WrapPanel Orientation="Horizontal">
+                                    <RadioButton Content="{Binding L[Settings_Data_CleanDialog_TimeAll]}"
+                                                 GroupName="CleanTimeRangeGroup"
+                                                 IsChecked="{Binding IsCleanTimeAll, Mode=TwoWay}"
+                                                 FontSize="{DynamicResource SubBodyFontSize}"
+                                                 Margin="0,0,12,4" />
+                                    <RadioButton Content="{Binding L[Settings_Data_CleanDialog_TimeWeek]}"
+                                                 GroupName="CleanTimeRangeGroup"
+                                                 IsChecked="{Binding IsCleanTimeWeek, Mode=TwoWay}"
+                                                 FontSize="{DynamicResource SubBodyFontSize}"
+                                                 Margin="0,0,12,4" />
+                                    <RadioButton Content="{Binding L[Settings_Data_CleanDialog_TimeMonth]}"
+                                                 GroupName="CleanTimeRangeGroup"
+                                                 IsChecked="{Binding IsCleanTimeMonth, Mode=TwoWay}"
+                                                 FontSize="{DynamicResource SubBodyFontSize}"
+                                                 Margin="0,0,12,4" />
+                                    <RadioButton Content="{Binding L[Settings_Data_CleanDialog_TimeQuarter]}"
+                                                 GroupName="CleanTimeRangeGroup"
+                                                 IsChecked="{Binding IsCleanTimeQuarter, Mode=TwoWay}"
+                                                 FontSize="{DynamicResource SubBodyFontSize}"
+                                                 Margin="0,0,0,4" />
+                                </WrapPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Safety: Preserve Favorites Option -->
+                        <CheckBox Content="{Binding L[Settings_Data_CleanDialog_PreserveFavorites]}"
+                                  IsChecked="{Binding PreserveFavoritesSelected, Mode=TwoWay}"
+                                  FontSize="{DynamicResource SubBodyFontSize}"
+                                  FontWeight="{DynamicResource BodyFontWeight}"
+                                  Foreground="{DynamicResource TextPrimaryBrush}" />
+
+                        <!-- Action Buttons -->
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,4,0,0">
                             <Button Content="{Binding L[Dialog_Cancel]}"
                                     Click="OnCancelClearClicked"
                                     Background="{DynamicResource SearchBackground}"
@@ -1638,8 +1798,9 @@
                                     CornerRadius="6"
                                     Padding="14,6"
                                     Cursor="Hand" />
-                            <Button Content="{Binding L[Settings_Data_Clear_ConfirmBtn]}"
+                            <Button Content="{Binding L[Settings_Data_CleanDialog_ConfirmBtn]}"
                                     Click="OnConfirmClearClicked"
+                                    IsEnabled="{Binding CanConfirmTargetedClean}"
                                     Background="{DynamicResource DestructiveBrush}"
                                     Foreground="White"
                                     BorderThickness="0"
@@ -1651,7 +1812,7 @@
                     </StackPanel>
 
                     <!-- 2. Spinner Progress Card -->
-                    <StackPanel x:Name="ClearProgressPanel" Spacing="16" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="False" Margin="0,10">
+                    <StackPanel x:Name="ClearProgressPanel" Spacing="16" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="False" Margin="0,20">
                         <Arc x:Name="ClearSpinnerArc"
                              Width="40"
                              Height="40"
@@ -1667,14 +1828,14 @@
                                 <RotateTransform Angle="0" />
                             </Arc.RenderTransform>
                         </Arc>
-                        <TextBlock Text="{Binding L[Settings_Data_Clear_Processing]}"
+                        <TextBlock Text="{Binding L[Settings_Data_CleanDialog_Processing]}"
                                    FontSize="{DynamicResource BodyFontSize}"
                                    Foreground="{DynamicResource TextSecondaryBrush}"
                                    HorizontalAlignment="Center" />
                     </StackPanel>
 
                     <!-- 3. Success Checkmark Card -->
-                    <StackPanel x:Name="ClearSuccessPanel" Spacing="14" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="False" Margin="0,10">
+                    <StackPanel x:Name="ClearSuccessPanel" Spacing="14" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="False" Margin="0,20">
                         <Border Width="44"
                                 Height="44"
                                 CornerRadius="22"
@@ -1686,7 +1847,7 @@
                                               HorizontalAlignment="Center"
                                               VerticalAlignment="Center" />
                         </Border>
-                        <TextBlock Text="{Binding L[Settings_Data_Clear_Success]}"
+                        <TextBlock Text="{Binding CleanSuccessMessage}"
                                    FontSize="{DynamicResource SectionTitleFontSize}"
                                    FontWeight="{DynamicResource TitleFontWeight}"
                                    Foreground="{DynamicResource TextPrimaryBrush}"

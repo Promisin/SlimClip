@@ -621,6 +621,180 @@ public class ClipboardHistory : IClipboardHistory
         }
     }
 
+    public async Task<StorageBreakdown> GetStorageBreakdownAsync(CancellationToken cancellationToken = default)
+    {
+        await _lock.WaitAsync(cancellationToken);
+        try
+        {
+            await using var conn = new SqliteConnection(_connectionString);
+            await conn.OpenAsync(cancellationToken);
+
+            int textCount = 0;
+            long textBytes = 0;
+            int imageCount = 0;
+            long imageBytes = 0;
+            int fileCount = 0;
+            long fileBytes = 0;
+            int favoriteCount = 0;
+
+            await using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = @"
+                    SELECT 
+                        type, 
+                        COUNT(1) AS cnt,
+                        SUM(LENGTH(CAST(COALESCE(text, '') AS BLOB)) +
+                            LENGTH(CAST(COALESCE(html_content, '') AS BLOB)) +
+                            LENGTH(CAST(COALESCE(rtf_content, '') AS BLOB)) +
+                            LENGTH(CAST(COALESCE(file_paths, '') AS BLOB))) AS byte_sum
+                    FROM clipboard_history
+                    GROUP BY type;
+                ";
+                await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+                while (await reader.ReadAsync(cancellationToken))
+                {
+                    var type = (ClipboardType)reader.GetInt32(0);
+                    int count = reader.GetInt32(1);
+                    long bytes = reader.IsDBNull(2) ? 0 : reader.GetInt64(2);
+
+                    switch (type)
+                    {
+                        case ClipboardType.Text:
+                            textCount = count;
+                            textBytes = bytes;
+                            break;
+                        case ClipboardType.Image:
+                            imageCount = count;
+                            imageBytes = bytes;
+                            break;
+                        case ClipboardType.File:
+                            fileCount = count;
+                            fileBytes = bytes;
+                            break;
+                    }
+                }
+            }
+
+            await using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = "SELECT COUNT(1) FROM clipboard_history WHERE is_favorite = 1;";
+                var favResult = await cmd.ExecuteScalarAsync(cancellationToken);
+                favoriteCount = favResult is long l ? (int)l : Convert.ToInt32(favResult);
+            }
+
+            if (Directory.Exists(_imagesDir))
+            {
+                var referencedHashes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                await using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = "SELECT DISTINCT image_hash FROM clipboard_history WHERE image_hash IS NOT NULL;";
+                    await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+                    while (await reader.ReadAsync(cancellationToken))
+                    {
+                        if (!reader.IsDBNull(0))
+                        {
+                            referencedHashes.Add(reader.GetString(0));
+                        }
+                    }
+                }
+
+                foreach (var hash in referencedHashes)
+                {
+                    var filePath = Path.Combine(_imagesDir, $"{hash}.png");
+                    if (File.Exists(filePath))
+                    {
+                        try
+                        {
+                            var fi = new FileInfo(filePath);
+                            imageBytes += fi.Length;
+                        }
+                        catch { }
+                    }
+                }
+            }
+
+            return new StorageBreakdown
+            {
+                TextCount = textCount,
+                TextBytes = textBytes,
+                ImageCount = imageCount,
+                ImageBytes = imageBytes,
+                FileCount = fileCount,
+                FileBytes = fileBytes,
+                FavoriteCount = favoriteCount
+            };
+        }
+        finally
+        {
+            _lock.Release();
+        }
+    }
+
+    public async Task<int> CleanTargetedAsync(TargetedCleanFilter filter, CancellationToken cancellationToken = default)
+    {
+        await _lock.WaitAsync(cancellationToken);
+        try
+        {
+            if (!filter.CleanText && !filter.CleanImages && !filter.CleanFiles)
+            {
+                return 0;
+            }
+
+            await using var conn = new SqliteConnection(_connectionString);
+            await conn.OpenAsync(cancellationToken);
+
+            var sb = new System.Text.StringBuilder("DELETE FROM clipboard_history WHERE 1=1");
+            await using var cmd = conn.CreateCommand();
+
+            if (filter.PreserveFavorites)
+            {
+                sb.Append(" AND is_favorite = 0");
+            }
+
+            var types = new List<int>();
+            if (filter.CleanText) types.Add((int)ClipboardType.Text);
+            if (filter.CleanImages) types.Add((int)ClipboardType.Image);
+            if (filter.CleanFiles) types.Add((int)ClipboardType.File);
+
+            if (types.Count > 0 && types.Count < 3)
+            {
+                var paramNames = new List<string>();
+                for (int i = 0; i < types.Count; i++)
+                {
+                    var paramName = $"@t{i}";
+                    paramNames.Add(paramName);
+                    cmd.Parameters.AddWithValue(paramName, types[i]);
+                }
+                sb.Append($" AND type IN ({string.Join(", ", paramNames)})");
+            }
+
+            int? days = filter.TimeRange switch
+            {
+                CleanTimeRange.OlderThanWeek => 7,
+                CleanTimeRange.OlderThanMonth => 30,
+                CleanTimeRange.OlderThanQuarter => 90,
+                _ => null
+            };
+
+            if (days.HasValue)
+            {
+                sb.Append(" AND datetime(copied_at) < datetime('now', '-' || @days || ' days')");
+                cmd.Parameters.AddWithValue("@days", days.Value);
+            }
+
+            cmd.CommandText = sb.ToString();
+            int rows = await cmd.ExecuteNonQueryAsync(cancellationToken);
+
+            await CleanOrphanImagesAsync(conn);
+
+            return rows;
+        }
+        finally
+        {
+            _lock.Release();
+        }
+    }
+
     public async Task UpdateTimestampAsync(string id, DateTime timestamp)
     {
         await _lock.WaitAsync();

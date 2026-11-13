@@ -130,7 +130,10 @@ public partial class SettingsViewModel : ObservableObject
     private bool _hasNewVersion;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasReleaseNotes))]
     private UpdateInfo? _availableUpdate;
+
+    public bool HasReleaseNotes => !string.IsNullOrWhiteSpace(AvailableUpdate?.FormattedReleaseNotes);
 
     [ObservableProperty]
     private bool _isDownloadingUpdate;
@@ -175,6 +178,7 @@ public partial class SettingsViewModel : ObservableObject
             OnPropertyChanged(nameof(CleanDaysUnitDisplay));
             OnPropertyChanged(nameof(PasteDelayUnitDisplay));
             OnPropertyChanged(nameof(CopyVersionButtonText));
+            UpdateStorageDisplayText();
             if (!IsCheckingUpdate && !HasNewVersion)
             {
                 CheckUpdateButtonText = _localizationService["Settings_About_CheckUpdate"];
@@ -192,6 +196,8 @@ public partial class SettingsViewModel : ObservableObject
             _hotkeyService.HotkeyRecorded += OnPlatformHotkeyRecorded;
             _hotkeyRegistrationStatus = _hotkeyService.LastRegistrationStatus;
         }
+
+        _ = RefreshStorageBreakdownAsync();
     }
 
     private void OnPlatformHotkeyRecorded(object? sender, HotkeyConfig config)
@@ -436,11 +442,159 @@ public partial class SettingsViewModel : ObservableObject
     public event EventHandler<HotkeyConfig>? HotkeyChanged;
     public event EventHandler? DataCleared;
 
+    // --- Data Storage & Targeted Clean State ---
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CleanTextLabel))]
+    [NotifyPropertyChangedFor(nameof(CleanImagesLabel))]
+    [NotifyPropertyChangedFor(nameof(CleanFilesLabel))]
+    private StorageBreakdown? _storageBreakdown;
+
+    [ObservableProperty]
+    private string _storageSummaryText = string.Empty;
+
+    [ObservableProperty]
+    private string _storageBreakdownText = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanConfirmTargetedClean))]
+    private bool _cleanTextSelected = true;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanConfirmTargetedClean))]
+    private bool _cleanImagesSelected = true;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanConfirmTargetedClean))]
+    private bool _cleanFilesSelected = true;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsCleanTimeAll))]
+    [NotifyPropertyChangedFor(nameof(IsCleanTimeWeek))]
+    [NotifyPropertyChangedFor(nameof(IsCleanTimeMonth))]
+    [NotifyPropertyChangedFor(nameof(IsCleanTimeQuarter))]
+    private CleanTimeRange _selectedCleanTimeRange = CleanTimeRange.All;
+
+    [ObservableProperty]
+    private bool _preserveFavoritesSelected = true;
+
+    public bool CanConfirmTargetedClean => CleanTextSelected || CleanImagesSelected || CleanFilesSelected;
+
+    public bool IsCleanTimeAll
+    {
+        get => SelectedCleanTimeRange == CleanTimeRange.All;
+        set { if (value) SelectedCleanTimeRange = CleanTimeRange.All; }
+    }
+
+    public bool IsCleanTimeWeek
+    {
+        get => SelectedCleanTimeRange == CleanTimeRange.OlderThanWeek;
+        set { if (value) SelectedCleanTimeRange = CleanTimeRange.OlderThanWeek; }
+    }
+
+    public bool IsCleanTimeMonth
+    {
+        get => SelectedCleanTimeRange == CleanTimeRange.OlderThanMonth;
+        set { if (value) SelectedCleanTimeRange = CleanTimeRange.OlderThanMonth; }
+    }
+
+    public bool IsCleanTimeQuarter
+    {
+        get => SelectedCleanTimeRange == CleanTimeRange.OlderThanQuarter;
+        set { if (value) SelectedCleanTimeRange = CleanTimeRange.OlderThanQuarter; }
+    }
+
+    public string CleanTextLabel => StorageBreakdown != null
+        ? $"{_localizationService["Settings_Data_CleanDialog_TypeText"]} ({StorageBreakdown.TextCount} · {StorageBreakdown.FormattedTextBytes})"
+        : _localizationService["Settings_Data_CleanDialog_TypeText"];
+
+    public string CleanImagesLabel => StorageBreakdown != null
+        ? $"{_localizationService["Settings_Data_CleanDialog_TypeImage"]} ({StorageBreakdown.ImageCount} · {StorageBreakdown.FormattedImageBytes})"
+        : _localizationService["Settings_Data_CleanDialog_TypeImage"];
+
+    public string CleanFilesLabel => StorageBreakdown != null
+        ? $"{_localizationService["Settings_Data_CleanDialog_TypeFile"]} ({StorageBreakdown.FileCount} · {StorageBreakdown.FormattedFileBytes})"
+        : _localizationService["Settings_Data_CleanDialog_TypeFile"];
+
+    [ObservableProperty]
+    private int _lastCleanedCount;
+
+    [ObservableProperty]
+    private string _cleanSuccessMessage = string.Empty;
+
+    public void UpdateStorageDisplayText()
+    {
+        if (StorageBreakdown == null)
+        {
+            StorageSummaryText = string.Empty;
+            StorageBreakdownText = string.Empty;
+            return;
+        }
+
+        StorageSummaryText = string.Format(
+            _localizationService["Settings_Data_StorageSummary"],
+            StorageBreakdown.FormattedTotalBytes,
+            StorageBreakdown.TotalCount);
+
+        StorageBreakdownText = string.Format(
+            _localizationService["Settings_Data_StorageBreakdown"],
+            StorageBreakdown.TextCount,
+            StorageBreakdown.FormattedTextBytes,
+            StorageBreakdown.ImageCount,
+            StorageBreakdown.FormattedImageBytes,
+            StorageBreakdown.FileCount,
+            StorageBreakdown.FormattedFileBytes,
+            StorageBreakdown.FavoriteCount);
+
+        OnPropertyChanged(nameof(CleanTextLabel));
+        OnPropertyChanged(nameof(CleanImagesLabel));
+        OnPropertyChanged(nameof(CleanFilesLabel));
+    }
+
+    [RelayCommand]
+    public async Task RefreshStorageBreakdownAsync()
+    {
+        try
+        {
+            StorageBreakdown = await _history.GetStorageBreakdownAsync();
+            UpdateStorageDisplayText();
+        }
+        catch
+        {
+            // Ignore error
+        }
+    }
+
     [RelayCommand]
     public async Task ClearAllDataAsync()
     {
         await _history.ClearAllAsync();
         DataCleared?.Invoke(this, EventArgs.Empty);
+        await RefreshStorageBreakdownAsync();
+    }
+
+    [RelayCommand]
+    public async Task<int> ExecuteTargetedCleanAsync()
+    {
+        if (!CanConfirmTargetedClean)
+            return 0;
+
+        var filter = new TargetedCleanFilter
+        {
+            CleanText = CleanTextSelected,
+            CleanImages = CleanImagesSelected,
+            CleanFiles = CleanFilesSelected,
+            TimeRange = SelectedCleanTimeRange,
+            PreserveFavorites = PreserveFavoritesSelected
+        };
+
+        var cleanedCount = await _history.CleanTargetedAsync(filter);
+        LastCleanedCount = cleanedCount;
+        CleanSuccessMessage = string.Format(_localizationService["Settings_Data_CleanDialog_Success"], cleanedCount);
+
+        DataCleared?.Invoke(this, EventArgs.Empty);
+        await RefreshStorageBreakdownAsync();
+
+        return cleanedCount;
     }
 
     // --- About Panel Properties & Commands ---
@@ -522,13 +676,14 @@ public partial class SettingsViewModel : ObservableObject
 
         var progress = new Progress<double>(p =>
         {
-            DownloadProgress = p;
+            DownloadProgress = Math.Clamp(Math.Round(p * 100.0, 1), 0.0, 100.0);
         });
 
         try
         {
             var path = await _updateService.DownloadUpdateAsync(AvailableUpdate, progress);
             _downloadedInstallerPath = path;
+            DownloadProgress = 100.0;
             IsUpdateDownloaded = true;
         }
         catch

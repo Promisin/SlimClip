@@ -1,3 +1,5 @@
+using SlimClip.Core.Services;
+
 namespace SlimClip.Core.Models;
 
 public record UpdateInfo
@@ -5,6 +7,7 @@ public record UpdateInfo
     public required string Version { get; init; }
     public required string TagName { get; init; }
     public string? ReleaseNotes { get; init; }
+    public string FormattedReleaseNotes => ReleaseNotesFormatter.Format(ReleaseNotes);
     public required string AssetName { get; init; }
     public required string DownloadUrl { get; init; }
     public long AssetSize { get; init; }
