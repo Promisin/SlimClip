@@ -1733,6 +1733,66 @@ public class StyleTests
         Assert.Equal("0", contentStack.Attribute(ns + "Grid.Row")?.Value ?? contentStack.Attribute("Grid.Row")?.Value);
     }
 
+    [Fact]
+    public async System.Threading.Tasks.Task SetupWindow_AutoUpdateMode_StartsInstallAutomaticallyOnOpen()
+    {
+        EnsureHeadlessApp();
+        var setupService = new DummyAutoSetupService(@"D:\Apps\SlimClip");
+        var vm = new SetupViewModel(setupService, @"C:\Temp\Source", isUninstallMode: false, localizationService: null, autoUpdateMode: true)
+        {
+            AutoLaunchDelayMs = 0
+        };
+        var window = new SetupWindow(vm);
+        window.Show();
+        window.UpdateLayout();
+
+        // Pump UI dispatcher jobs so the async Opened handler executes to completion
+        for (int i = 0; i < 10 && setupService.LaunchedDir == null; i++)
+        {
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            await System.Threading.Tasks.Task.Delay(20);
+        }
+
+        Assert.NotNull(setupService.LastOptions);
+        Assert.Equal(@"D:\Apps\SlimClip", setupService.LaunchedDir);
+        window.Close();
+    }
+
+    [Fact]
+    public void SettingsWindow_GeneralPanel_ContainsAutoCheckUpdatesSwitch()
+    {
+        var basePath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../src/SlimClip.UI/Views/SettingsWindow.axaml"));
+        var doc = XDocument.Load(basePath);
+        var ns = doc.Root!.GetDefaultNamespace();
+        var xNs = doc.Root.GetNamespaceOfPrefix("x") ?? XNamespace.None;
+
+        var generalPanel = doc.Descendants(ns + "ScrollViewer")
+            .FirstOrDefault(s => s.Attribute(xNs + "Name")?.Value == "PanelGeneral");
+        Assert.NotNull(generalPanel);
+
+        var hasBinding = generalPanel!.Descendants(ns + "ToggleSwitch")
+            .Any(t => t.Attribute("IsChecked")?.Value.Contains("AutoCheckUpdates") == true);
+        Assert.True(hasBinding, "PanelGeneral 必须包含绑定 AutoCheckUpdates 的 ToggleSwitch");
+    }
+
+    private sealed class DummyAutoSetupService : IWindowsSetupService
+    {
+        private readonly string _existingPath;
+        public InstallOptions? LastOptions { get; private set; }
+        public string? LaunchedDir { get; private set; }
+
+        public DummyAutoSetupService(string existingPath) => _existingPath = existingPath;
+        public string? DetectExistingInstallPath() => _existingPath;
+        public System.Threading.Tasks.Task InstallAsync(InstallOptions options, IProgress<SetupProgress>? progress = null)
+        {
+            LastOptions = options;
+            return System.Threading.Tasks.Task.CompletedTask;
+        }
+        public System.Threading.Tasks.Task UninstallAsync(string installDirectory, IProgress<SetupProgress>? progress = null)
+            => System.Threading.Tasks.Task.CompletedTask;
+        public void LaunchInstalledApp(string installDirectory) => LaunchedDir = installDirectory;
+    }
+
     private class DummyClipboardHistory : IClipboardHistory
     {
         public Task InitializeAsync() => Task.CompletedTask;

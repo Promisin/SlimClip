@@ -203,5 +203,11 @@
   "Settings_Data_CleanDialog_NoSelection": "Please select at least one data type",
   "Panel_Footer_PastePlainText": "Plain text",
   "Menu_PastePlainText": "Paste Plain Text",
-  "Menu_CopyPlainText": "Copy Plain Text"
+  "Menu_CopyPlainText": "Copy Plain Text",
+  "Update_Notify_Downloaded_Title": "Update Ready",
+  "Update_Notify_Downloaded_Body": "SlimClip {0} is downloaded. Click to review and update.",
+  "Settings_General_AutoCheckUpdate": "Auto Check for Updates",
+  "Settings_General_AutoCheckUpdate_Desc": "Automatically check for new versions on startup and every 24 hours",
+  "Update_Notify_Available_Title": "Update Available: {0}",
+  "Update_Notify_Available_Body": "Click to open Settings, view release notes, and install."
 }

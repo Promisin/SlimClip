@@ -11,6 +11,8 @@ namespace SlimClip.UI.Views;
 
 public partial class SetupWindow : Window
 {
+    private bool _autoInstallTriggered;
+
     public SetupWindow()
     {
         InitializeComponent();
@@ -34,6 +36,14 @@ public partial class SetupWindow : Window
     {
         DataContext = viewModel;
         viewModel.RequestClose += (_, _) => Close();
+        Opened += async (_, _) =>
+        {
+            if (viewModel.IsAutoUpdateMode && !_autoInstallTriggered)
+            {
+                _autoInstallTriggered = true;
+                await viewModel.ConfirmInstallCommand.ExecuteAsync(null);
+            }
+        };
     }
 
     private void OnInstallPathLostFocus(object? sender, RoutedEventArgs e)

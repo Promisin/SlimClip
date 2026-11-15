@@ -22,11 +22,18 @@ public partial class SetupViewModel : ObservableObject
     private readonly ILocalizationService _localizationService;
     private readonly string _sourceDirectory;
     private readonly bool _isUninstallMode;
+    private bool _isInstallRunning;
 
     public ILocalizationService L => _localizationService;
 
     public bool IsUninstallMode => _isUninstallMode;
     public bool IsUpgradeMode { get; }
+    public bool IsAutoUpdateMode { get; }
+
+    /// <summary>
+    /// 自动更新安装完成后自动拉起新版本前的视觉停留时长（毫秒），测试中可设为 0 加速验证。
+    /// </summary>
+    public int AutoLaunchDelayMs { get; set; } = 250;
 
     /// <summary>仅在全新安装（非覆盖升级、非卸载）时允许编辑安装路径。</summary>
     public bool IsPathEditable => !IsUpgradeMode && !_isUninstallMode;
@@ -80,7 +87,8 @@ public partial class SetupViewModel : ObservableObject
         IWindowsSetupService setupService,
         string? sourceDirectory = null,
         bool isUninstallMode = false,
-        ILocalizationService? localizationService = null)
+        ILocalizationService? localizationService = null,
+        bool autoUpdateMode = false)
     {
         _setupService = setupService;
         _isUninstallMode = isUninstallMode;
@@ -109,6 +117,13 @@ public partial class SetupViewModel : ObservableObject
             IsUpgradeMode = false;
             _installPath = InstallerPathHelper.GetDefaultInstallDirectory();
         }
+
+        IsAutoUpdateMode = autoUpdateMode && IsUpgradeMode;
+        if (IsAutoUpdateMode)
+        {
+            Stage = SetupWizardStage.Installing;
+            StatusText = _localizationService["Setup_Status_StoppingOld"];
+        }
     }
 
     /// <summary>
@@ -126,8 +141,10 @@ public partial class SetupViewModel : ObservableObject
     [RelayCommand]
     public async Task ConfirmInstallAsync()
     {
-        if (Stage == SetupWizardStage.Installing)
+        if (_isInstallRunning)
             return;
+
+        _isInstallRunning = true;
 
         // 确认前再次确保全新安装路径经过规范化补齐 \SlimClip 后缀
         if (IsPathEditable)
@@ -167,11 +184,25 @@ public partial class SetupViewModel : ObservableObject
 
             ProgressPercent = 100;
             Stage = SetupWizardStage.Completed;
+
+            if (IsAutoUpdateMode)
+            {
+                if (AutoLaunchDelayMs > 0)
+                {
+                    await Task.Delay(AutoLaunchDelayMs);
+                }
+
+                LaunchAndExit();
+            }
         }
         catch (Exception ex)
         {
             ErrorMessage = ex.Message;
             Stage = SetupWizardStage.Failed;
+        }
+        finally
+        {
+            _isInstallRunning = false;
         }
     }
 

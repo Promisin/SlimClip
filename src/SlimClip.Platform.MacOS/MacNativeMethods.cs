@@ -16,6 +16,15 @@ internal static class MacNativeMethods
     [DllImport(ObjCLib, EntryPoint = "sel_registerName")]
     public static extern IntPtr sel_registerName(string name);
 
+    [DllImport(ObjCLib, EntryPoint = "objc_allocateClassPair")]
+    public static extern IntPtr objc_allocateClassPair(IntPtr superclass, string name, UIntPtr extraBytes);
+
+    [DllImport(ObjCLib, EntryPoint = "objc_registerClassPair")]
+    public static extern void objc_registerClassPair(IntPtr cls);
+
+    [DllImport(ObjCLib, EntryPoint = "class_addMethod")]
+    public static extern bool class_addMethod(IntPtr cls, IntPtr name, IntPtr imp, string types);
+
     [DllImport(ObjCLib, EntryPoint = "objc_msgSend")]
     public static extern IntPtr objc_msgSend(IntPtr receiver, IntPtr selector);
 

@@ -203,5 +203,11 @@
   "Settings_Data_CleanDialog_NoSelection": "请至少选择一种清理类型",
   "Panel_Footer_PastePlainText": "纯文本",
   "Menu_PastePlainText": "粘贴纯文本",
-  "Menu_CopyPlainText": "复制纯文本"
+  "Menu_CopyPlainText": "复制纯文本",
+  "Update_Notify_Downloaded_Title": "更新已准备就绪",
+  "Update_Notify_Downloaded_Body": "SlimClip {0} 下载完成，点击查看并完成更新",
+  "Settings_General_AutoCheckUpdate": "自动检查更新",
+  "Settings_General_AutoCheckUpdate_Desc": "启动时及每 24 小时自动在后台检测新版本",
+  "Update_Notify_Available_Title": "发现新版本 {0}",
+  "Update_Notify_Available_Body": "点击打开设置查看更新说明并安装"
 }

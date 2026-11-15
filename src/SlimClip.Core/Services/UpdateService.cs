@@ -112,16 +112,22 @@ public class UpdateService : IUpdateService
         return targetPath;
     }
 
+    public static ProcessStartInfo BuildWindowsInstallerStartInfo(string installerPath)
+    {
+        return new ProcessStartInfo
+        {
+            FileName = installerPath,
+            Arguments = "--auto-update",
+            UseShellExecute = true
+        };
+    }
+
     public void LaunchInstallerAndExit(string installerPath)
     {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            // Windows: 启动自定义安装器接管升级并关闭旧进程
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = installerPath,
-                UseShellExecute = true
-            });
+            // Windows: 启动自定义安装器接管升级（携带 --auto-update 自动完成安装并重启）并关闭旧进程
+            Process.Start(BuildWindowsInstallerStartInfo(installerPath));
             Environment.Exit(0);
         }
         else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))

@@ -866,6 +866,17 @@
                                 <ToggleSwitch Grid.Column="1" IsChecked="{Binding StartEmptyHistory, Mode=TwoWay}" OnContent="" OffContent="" />
                             </Grid>
                         </Border>
+
+                        <!-- Auto Check for Updates -->
+                        <Border Background="{DynamicResource CardBackground}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource ItemCardCornerRadius}" Padding="16,12">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" Spacing="2">
+                                    <TextBlock Text="{Binding L[Settings_General_AutoCheckUpdate]}" FontSize="{DynamicResource SectionTitleFontSize}" FontWeight="{DynamicResource BodyFontWeight}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    <TextBlock Text="{Binding L[Settings_General_AutoCheckUpdate_Desc]}" FontSize="{DynamicResource SubBodyFontSize}" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                </StackPanel>
+                                <ToggleSwitch Grid.Column="1" IsChecked="{Binding AutoCheckUpdates, Mode=TwoWay}" OnContent="" OffContent="" />
+                            </Grid>
+                        </Border>
                     </StackPanel>
                 </ScrollViewer>
 

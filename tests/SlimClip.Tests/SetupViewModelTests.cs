@@ -14,12 +14,17 @@ public class SetupViewModelTests
         public string? ExistingInstallPath { get; set; }
         public InstallOptions? LastInstallOptions { get; private set; }
         public string? LaunchedInstallDir { get; private set; }
+        public bool ShouldThrowOnInstall { get; set; }
 
         public string? DetectExistingInstallPath() => ExistingInstallPath;
 
         public Task InstallAsync(InstallOptions options, IProgress<SetupProgress>? progress = null)
         {
             LastInstallOptions = options;
+            if (ShouldThrowOnInstall)
+            {
+                throw new InvalidOperationException("Simulated installation error");
+            }
             progress?.Report(new SetupProgress(50, "Installing..."));
             progress?.Report(new SetupProgress(100, "Done"));
             return Task.CompletedTask;
@@ -104,5 +109,74 @@ public class SetupViewModelTests
 
         Assert.Equal(@"D:\CustomApps\SlimClip", fakeService.LaunchedInstallDir);
         Assert.True(closeRequested);
+    }
+
+    [Fact]
+    public async Task AutoUpdateMode_WithExistingInstall_StartsInInstallingStage_AndAutoLaunchesOnCompletion()
+    {
+        var fakeService = new FakeWindowsSetupService
+        {
+            ExistingInstallPath = @"D:\Apps\SlimClip"
+        };
+        var vm = new SetupViewModel(fakeService, @"C:\Temp\Source", isUninstallMode: false, localizationService: null, autoUpdateMode: true)
+        {
+            AutoLaunchDelayMs = 0
+        };
+
+        Assert.True(vm.IsUpgradeMode);
+        Assert.True(vm.IsAutoUpdateMode);
+        Assert.True(vm.IsInstallingStage);
+        Assert.False(vm.IsConfigurationStage);
+        Assert.False(string.IsNullOrWhiteSpace(vm.StatusText));
+
+        bool closeRequested = false;
+        vm.RequestClose += (_, _) => closeRequested = true;
+
+        await vm.ConfirmInstallCommand.ExecuteAsync(null);
+
+        Assert.NotNull(fakeService.LastInstallOptions);
+        Assert.True(fakeService.LastInstallOptions!.IsUpgradeMode);
+        Assert.Equal(@"D:\Apps\SlimClip", fakeService.LastInstallOptions.TargetDirectory);
+        Assert.Equal(@"D:\Apps\SlimClip", fakeService.LaunchedInstallDir);
+        Assert.True(closeRequested);
+    }
+
+    [Fact]
+    public void AutoUpdateMode_WithoutExistingInstall_FallsBackToConfigurationStage()
+    {
+        var fakeService = new FakeWindowsSetupService
+        {
+            ExistingInstallPath = null
+        };
+        var vm = new SetupViewModel(fakeService, @"C:\Temp\Source", isUninstallMode: false, localizationService: null, autoUpdateMode: true);
+
+        Assert.False(vm.IsUpgradeMode);
+        Assert.False(vm.IsAutoUpdateMode);
+        Assert.True(vm.IsConfigurationStage);
+        Assert.False(vm.IsInstallingStage);
+    }
+
+    [Fact]
+    public async Task AutoUpdateMode_WhenInstallFails_TransitionsToFailedWithoutLaunching()
+    {
+        var fakeService = new FakeWindowsSetupService
+        {
+            ExistingInstallPath = @"D:\Apps\SlimClip",
+            ShouldThrowOnInstall = true
+        };
+        var vm = new SetupViewModel(fakeService, @"C:\Temp\Source", isUninstallMode: false, localizationService: null, autoUpdateMode: true)
+        {
+            AutoLaunchDelayMs = 0
+        };
+
+        bool closeRequested = false;
+        vm.RequestClose += (_, _) => closeRequested = true;
+
+        await vm.ConfirmInstallCommand.ExecuteAsync(null);
+
+        Assert.True(vm.IsFailedStage);
+        Assert.Equal("Simulated installation error", vm.ErrorMessage);
+        Assert.Null(fakeService.LaunchedInstallDir);
+        Assert.False(closeRequested);
     }
 }

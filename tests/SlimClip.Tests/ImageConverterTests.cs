@@ -22,10 +22,6 @@ public class ImageConverterTests : IDisposable
         ImagePathToBitmapConverter.ClearCache();
 
         var imagesDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "..", "images");
-        if (!Directory.Exists(imagesDir))
-        {
-            imagesDir = @"D:\Project\SlimClip\images";
-        }
 
         if (Directory.Exists(imagesDir))
         {

@@ -31,5 +31,5 @@ jobs:
       - name: Build solution
         run: dotnet build SlimClip.slnx -c Release --no-restore
 
-      - name: Run unit tests
+      - name: Run unit tests & repository guardrails
         run: dotnet test tests/SlimClip.Tests/SlimClip.Tests.csproj -c Release --no-build --verbosity normal

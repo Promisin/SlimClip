@@ -380,6 +380,8 @@ public class WindowsSetupService : IWindowsSetupService
                 }
             }
         }
+
+        RemoveKeyIfExists(RegistryHive.CurrentUser, RegistryView.Default, $@"Software\Classes\AppUserModelId\{WindowsNotificationService.AppUserModelId}");
     }
 
     private static void RemoveKeyIfExists(RegistryHive hive, RegistryView view, string subKey)

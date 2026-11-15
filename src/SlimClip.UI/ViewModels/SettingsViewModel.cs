@@ -148,6 +148,17 @@ public partial class SettingsViewModel : ObservableObject
     private bool _isDownloadFailed;
 
     private string? _downloadedInstallerPath;
+    private string? _lastAutoNotifiedTag;
+
+    /// <summary>
+    /// 更新包下载成功并就绪时触发，通知宿主弹出系统提示或刷新状态。
+    /// </summary>
+    public event EventHandler<UpdateInfo>? UpdateDownloadCompleted;
+
+    /// <summary>
+    /// 后台自动检查发现新版本时触发（同一版本号单次运行周期内不重复触发）。
+    /// </summary>
+    public event EventHandler<UpdateInfo>? AutoUpdateAvailableDetected;
 
     public SettingsViewModel(
         ISettingsService settingsService,
@@ -247,6 +258,23 @@ public partial class SettingsViewModel : ObservableObject
             }
         }
     }
+
+    public bool AutoCheckUpdates
+    {
+        get => _settingsService.Settings.AutoCheckUpdates;
+        set
+        {
+            if (_settingsService.Settings.AutoCheckUpdates != value)
+            {
+                _settingsService.Settings.AutoCheckUpdates = value;
+                _settingsService.Save();
+                OnPropertyChanged();
+                AutoCheckUpdatesChanged?.Invoke(this, value);
+            }
+        }
+    }
+
+    public event EventHandler<bool>? AutoCheckUpdatesChanged;
 
     public AppThemeMode ThemeMode
     {
@@ -632,6 +660,13 @@ public partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     public void OpenProjectUrl() => PlatformLauncher.OpenUrl(ProjectUrl);
 
+    private void ApplyAvailableUpdate(UpdateInfo update)
+    {
+        AvailableUpdate = update;
+        HasNewVersion = true;
+        CheckUpdateButtonText = _localizationService["Settings_About_Update_Found"];
+    }
+
     [RelayCommand]
     public async Task CheckUpdatesAsync()
     {
@@ -645,9 +680,7 @@ public partial class SettingsViewModel : ObservableObject
 
         if (result.HasUpdate && result.Update != null)
         {
-            AvailableUpdate = result.Update;
-            HasNewVersion = true;
-            CheckUpdateButtonText = _localizationService["Settings_About_Update_Found"];
+            ApplyAvailableUpdate(result.Update);
         }
         else if (!string.IsNullOrEmpty(result.ErrorMessage))
         {
@@ -661,6 +694,35 @@ public partial class SettingsViewModel : ObservableObject
             CheckUpdateButtonText = _localizationService["Settings_About_Update_Latest"];
             await Task.Delay(2500);
             CheckUpdateButtonText = _localizationService["Settings_About_CheckUpdate"];
+        }
+    }
+
+    /// <summary>
+    /// 后台静默检查更新：仅在发现新版本时更新状态并触发通知，网络失败或已是最新时静默跳过，不干扰按钮文案。
+    /// </summary>
+    public async Task CheckUpdatesSilentlyAsync()
+    {
+        if (IsCheckingUpdate || IsDownloadingUpdate || IsUpdateDownloaded)
+            return;
+
+        UpdateCheckResult result;
+        try
+        {
+            result = await _updateService.CheckForUpdatesAsync(AppVersion);
+        }
+        catch
+        {
+            return;
+        }
+
+        if (result.HasUpdate && result.Update != null)
+        {
+            ApplyAvailableUpdate(result.Update);
+            if (!string.Equals(_lastAutoNotifiedTag, result.Update.TagName, StringComparison.OrdinalIgnoreCase))
+            {
+                _lastAutoNotifiedTag = result.Update.TagName;
+                AutoUpdateAvailableDetected?.Invoke(this, result.Update);
+            }
         }
     }
 
@@ -681,10 +743,12 @@ public partial class SettingsViewModel : ObservableObject
 
         try
         {
-            var path = await _updateService.DownloadUpdateAsync(AvailableUpdate, progress);
+            var downloadedUpdate = AvailableUpdate;
+            var path = await _updateService.DownloadUpdateAsync(downloadedUpdate, progress);
             _downloadedInstallerPath = path;
             DownloadProgress = 100.0;
             IsUpdateDownloaded = true;
+            UpdateDownloadCompleted?.Invoke(this, downloadedUpdate);
         }
         catch
         {

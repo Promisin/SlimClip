@@ -66,4 +66,14 @@ public class UpdateServiceTests
         Assert.Contains(".dmg", info.DownloadUrl);
         Assert.Equal(18000000, info.AssetSize);
     }
+
+    [Fact]
+    public void BuildWindowsInstallerStartInfo_IncludesAutoUpdateFlag()
+    {
+        var startInfo = SlimClip.Core.Services.UpdateService.BuildWindowsInstallerStartInfo(@"C:\Temp\SlimClip-v1.0.8-windows-x64-setup.exe");
+
+        Assert.Equal(@"C:\Temp\SlimClip-v1.0.8-windows-x64-setup.exe", startInfo.FileName);
+        Assert.Equal("--auto-update", startInfo.Arguments);
+        Assert.True(startInfo.UseShellExecute);
+    }
 }

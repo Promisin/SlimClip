@@ -32,6 +32,8 @@ public partial class App : Application
     private IWindowAnchorService _windowAnchorService = null!;
     private IHotkeyService _hotkeyService = null!;
     private IWindowActivationService _windowActivationService = null!;
+    private INotificationService? _notificationService;
+    private CancellationTokenSource? _autoUpdateCheckCts;
 
     private MainViewModel _mainViewModel = null!;
     private SettingsViewModel _settingsViewModel = null!;
@@ -119,6 +121,7 @@ public partial class App : Application
                 _windowAnchorService = new WindowsWindowAnchorService();
                 _hotkeyService = new WindowsHotkeyService();
                 _windowActivationService = new WindowsWindowActivationService();
+                _notificationService = new WindowsNotificationService();
             }
             else
 #endif
@@ -128,6 +131,7 @@ public partial class App : Application
                 _windowAnchorService = new MacWindowAnchorService();
                 _hotkeyService = new MacHotkeyService();
                 _windowActivationService = new MacWindowActivationService();
+                _notificationService = new MacNotificationService();
             }
 
             // 2. ViewModels
@@ -169,6 +173,9 @@ public partial class App : Application
             {
                 await _mainViewModel.InitializeAsync();
             };
+            _settingsViewModel.UpdateDownloadCompleted += (_, update) => OnUpdateDownloadCompleted(update);
+            _settingsViewModel.AutoUpdateAvailableDetected += (_, update) => OnAutoUpdateAvailableDetected(update);
+            _settingsViewModel.AutoCheckUpdatesChanged += (_, enabled) => ConfigureAutoUpdateCheckSchedule(enabled);
 
             ActualThemeVariantChanged += (s, e) =>
             {
@@ -197,6 +204,9 @@ public partial class App : Application
 
             // 7. Pre-warm clipboard panel handle silently to eliminate first-show cold start and focus jitter
             PreWarmClipboardPanel();
+
+            // 8. Start background auto update check schedule if enabled
+            ConfigureAutoUpdateCheckSchedule(_settingsService.Settings.AutoCheckUpdates);
         }
 
         base.OnFrameworkInitializationCompleted();
@@ -267,6 +277,7 @@ public partial class App : Application
         var args = desktop.Args ?? Array.Empty<string>();
         bool isSetup = false;
         bool isUninstall = false;
+        bool autoUpdate = false;
         string? sourceDir = null;
 
         for (int i = 0; i < args.Length; i++)
@@ -278,6 +289,10 @@ public partial class App : Application
             else if (string.Equals(args[i], "--uninstall", StringComparison.OrdinalIgnoreCase))
             {
                 isUninstall = true;
+            }
+            else if (string.Equals(args[i], "--auto-update", StringComparison.OrdinalIgnoreCase))
+            {
+                autoUpdate = true;
             }
             else if (string.Equals(args[i], "--source", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
             {
@@ -301,7 +316,7 @@ public partial class App : Application
         ApplyThemeMode(AppThemeMode.System);
 
         var setupService = new WindowsSetupService(loc);
-        var vm = new SetupViewModel(setupService, sourceDir, isUninstall, loc);
+        var vm = new SetupViewModel(setupService, sourceDir, isUninstall, loc, autoUpdate);
         var setupWindow = new SetupWindow(vm);
         WindowsPlatformChromeHelper.ConfigureWindowChrome(setupWindow, setupStyle);
         AttachPlatformBackdrop(setupWindow);
@@ -317,6 +332,108 @@ public partial class App : Application
         return true;
     }
 #endif
+
+    internal static bool ShouldShowDownloadNotification(bool isWindowVisible, bool isWindowActive)
+    {
+        return !isWindowVisible || !isWindowActive;
+    }
+
+    private void OnUpdateDownloadCompleted(UpdateInfo update)
+    {
+        var title = _localizationService["Update_Notify_Downloaded_Title"];
+        var body = string.Format(_localizationService["Update_Notify_Downloaded_Body"], update.TagName);
+        NotifyIfSettingsInactive(title, body);
+    }
+
+    private void OnAutoUpdateAvailableDetected(UpdateInfo update)
+    {
+        var title = string.Format(_localizationService["Update_Notify_Available_Title"], update.TagName);
+        var body = _localizationService["Update_Notify_Available_Body"];
+        NotifyIfSettingsInactive(title, body);
+    }
+
+    private void NotifyIfSettingsInactive(string title, string body)
+    {
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            bool isVisible = _settingsWindow?.IsVisible == true && _settingsWindow.WindowState != WindowState.Minimized;
+            bool isActive = _settingsWindow?.IsActive == true;
+            if (!ShouldShowDownloadNotification(isVisible, isActive))
+                return;
+
+            _notificationService?.ShowNotification(
+                title,
+                body,
+                onClicked: () => Avalonia.Threading.Dispatcher.UIThread.Post(ShowUpdateReadySettingsWindow));
+        });
+    }
+
+    private void ConfigureAutoUpdateCheckSchedule(bool enabled)
+    {
+        var previousCts = _autoUpdateCheckCts;
+        _autoUpdateCheckCts = null;
+        if (previousCts != null)
+        {
+            try
+            {
+                previousCts.Cancel();
+                previousCts.Dispose();
+            }
+            catch
+            {
+            }
+        }
+
+        if (!enabled)
+            return;
+
+        var cts = new CancellationTokenSource();
+        _autoUpdateCheckCts = cts;
+        _ = RunAutoUpdateCheckLoopAsync(cts.Token);
+    }
+
+    private async Task RunAutoUpdateCheckLoopAsync(CancellationToken ct)
+    {
+        try
+        {
+            // 启动延迟 3 秒检查，避免争抢冷启动与首屏面板预热资源
+            await Task.Delay(TimeSpan.FromSeconds(3), ct);
+
+            while (!ct.IsCancellationRequested)
+            {
+                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(
+                    () => _settingsViewModel.CheckUpdatesSilentlyAsync());
+
+                await Task.Delay(TimeSpan.FromHours(24), ct);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch
+        {
+        }
+    }
+
+    private void ShowUpdateReadySettingsWindow()
+    {
+        OpenSettingsWindow("About");
+        if (_settingsWindow == null)
+            return;
+
+        if (_settingsWindow.WindowState == WindowState.Minimized)
+        {
+            _settingsWindow.WindowState = WindowState.Normal;
+        }
+
+        _settingsWindow.Show();
+        _settingsWindow.Activate();
+
+        if (_settingsWindow.TryGetPlatformHandle()?.Handle is { } handle && handle != IntPtr.Zero)
+        {
+            _windowActivationService?.ActivateWindow(handle);
+        }
+    }
 
     public void OpenSettingsWindow(string? tab)
     {
@@ -459,8 +576,10 @@ public partial class App : Application
         _exitMenuItem = new NativeMenuItem(_localizationService["Tray_Exit"]);
         _exitMenuItem.Click += (s, e) =>
         {
+            ConfigureAutoUpdateCheckSchedule(false);
             _clipboardMonitor.Stop();
             _hotkeyService.Unregister();
+            _notificationService?.Dispose();
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
                 desktop.Shutdown();

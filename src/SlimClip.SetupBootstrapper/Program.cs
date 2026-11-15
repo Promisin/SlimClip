@@ -9,8 +9,9 @@ namespace SlimClip.SetupBootstrapper;
 internal static class Program
 {
     [STAThread]
-    public static int Main()
+    public static int Main(string[] args)
     {
+        bool autoUpdate = Array.Exists(args, a => string.Equals(a, "--auto-update", StringComparison.OrdinalIgnoreCase));
         var tempExtractDir = Path.Combine(Path.GetTempPath(), $"SlimClip_Setup_{Guid.NewGuid():N}");
         try
         {
@@ -37,10 +38,14 @@ internal static class Program
                 return 2;
             }
 
+            var setupArgs = autoUpdate
+                ? $"--setup --source \"{tempExtractDir}\" --auto-update"
+                : $"--setup --source \"{tempExtractDir}\"";
+
             using var proc = Process.Start(new ProcessStartInfo
             {
                 FileName = mainExe,
-                Arguments = $"--setup --source \"{tempExtractDir}\"",
+                Arguments = setupArgs,
                 WorkingDirectory = tempExtractDir,
                 UseShellExecute = false
             });

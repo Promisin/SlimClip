@@ -20,6 +20,7 @@ public class AppSettings
     public HotkeyConfig Hotkey { get; set; } = new();
     public int MaxHistoryItems { get; set; } = 100;
     public bool StartWithSystem { get; set; }
+    public bool AutoCheckUpdates { get; set; }
     public bool RunInBackground { get; set; } = true;
     public bool AutoCleanEnabled { get; set; }
     public bool PeriodicCleanEnabled { get; set; }
